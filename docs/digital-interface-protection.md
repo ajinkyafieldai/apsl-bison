@@ -726,3 +726,119 @@ These mechanisms may share physical components where that is proven safe, but th
 
 HBM/CDM ratings remain relevant when selecting the translator and other ICs, but they do not substitute for system-level connector ESD protection.
 
+---
+
+## 28. VCLAMP generation options
+
+The positive clamp rail is not merely a reference voltage. During an overvoltage event it must absorb current injected through the signal clamp diodes while remaining within the safe voltage envelope of the translator.
+
+Two implementation approaches are currently considered valid.
+
+### 28.1 Programmable shunt regulator
+
+A programmable shunt regulator such as a TLV431/TL431-class device can establish a fixed clamp rail and sink injected clamp current.
+
+Conceptually:
+
+```
+higher internal rail
+      |
+    feed / bias
+      |
+      +------ VCLAMP
+      |          |
+ shunt regulator +---- clamp diode currents from DUT signals
+      |
+     GND
+```
+
+Advantages:
+
+- simple;
+- inexpensive;
+- naturally behaves as a sink;
+- easy to set with resistor ratios;
+- can provide a stiff shared clamp rail;
+- clamp-current sensing can be placed in the shunt return path.
+
+Limitations / design questions:
+
+- minimum cathode current;
+- maximum sink current;
+- power dissipation;
+- dynamic impedance;
+- transient response;
+- stability / required compensation;
+- feed resistor or current-source sizing;
+- available headroom above VCLAMP.
+
+The smaller TLV431-class parts may be suitable for low clamp-current requirements, while TL431/LT1431-class devices provide substantially more sink capability.
+
+No specific part is frozen.
+
+### 28.2 Op-amp + MOSFET active sink
+
+A second valid approach is an active sink using an op-amp/error amplifier controlling a transistor or MOSFET.
+
+Conceptually:
+
+```
+                    +------ VCLAMP
+                    |
+DUT clamp currents -+
+                    |
+                 MOSFET
+                    |
+                   GND
+                    ^
+                    |
+                 op-amp
+                    ^
+                    |
+              voltage reference
+```
+
+The op-amp drives the MOSFET so that VCLAMP remains at the desired hardware-defined threshold.
+
+Advantages:
+
+- potentially higher clamp-current capability;
+- flexible sink-current sizing;
+- threshold can be set independently of shunt-regulator reference constraints;
+- power device can be selected independently of the control amplifier;
+- easier to scale if the rail must absorb substantial sustained fault current.
+
+Limitations / design questions:
+
+- loop stability;
+- phase margin with clamp-bus capacitance and wiring inductance;
+- op-amp input/output common-mode range;
+- startup and shutdown behavior;
+- MOSFET SOA and thermal dissipation;
+- response to very fast clamp events;
+- failure behavior if the amplifier loses power;
+- reference accuracy and drift;
+- increased component count.
+
+### 28.3 Decision deferred to electrical design
+
+The architectural requirement is:
+
+> VCLAMP must be a hardware-defined rail capable of safely sinking the expected aggregate clamp current while holding the translator pins below their safe maximum voltage.
+
+The implementation is intentionally not frozen during architecture exploration.
+
+The shunt-regulator and op-amp/MOSFET approaches are both considered technically viable and should be evaluated during schematic design using the actual:
+
+- VCLAMP target;
+- expected per-pin and aggregate fault current;
+- number of signals per clamp domain;
+- allowed rail movement during a fault;
+- transient-response requirement;
+- continuous fault duration;
+- thermal budget;
+- PCB area;
+- BOM cost.
+
+At the current stage the goal is to establish that a practical VCLAMP sink is feasible, not to select its final circuit.
+
