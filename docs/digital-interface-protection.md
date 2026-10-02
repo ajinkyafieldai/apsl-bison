@@ -505,3 +505,175 @@ Current decisions/directions:
 - A roughly 100 mA trip level is a discussion starting point, not a frozen requirement.
 - High-speed interfaces require protection as well as slow GPIO.
 - Signal overvoltage is a distinct problem from overcurrent and remains to be solved separately.
+
+---
+
+## 23. Positive overvoltage clamp concept
+
+For a push-pull translator whose DUT-facing output pin must remain below approximately `VCCB + 0.5 V`, positive overvoltage protection should reference the DUT-side logic domain rather than use a fixed absolute threshold.
+
+The proposed topology is:
+
+```
+DUT ---- Rsmall ----+---- translator pin
+                    |
+                    +---- clamp diode ----> VCLAMP_POS
+```
+
+where:
+
+- `Rsmall` is deliberately small so it does not become the primary output-contention limiter or materially damage high-speed signal integrity;
+- `VCLAMP_POS` is a hardware-defined protection rail;
+- `VCLAMP_POS` is chosen so legitimate DUT HIGH levels slightly above nominal VCCB are accepted, while the translator is still protected before reaching its absolute maximum.
+
+The clamp threshold must therefore account for:
+
+- maximum legitimate DUT HIGH voltage;
+- VCCB tolerance;
+- diode I-V behavior versus current;
+- temperature;
+- resistor tolerance;
+- transient overshoot;
+- translator absolute maximum rating.
+
+The positive clamp rail should not simply dump fault current into VCCB unless VCCB is explicitly designed to sink that current. A separate clamp rail gives better fault containment.
+
+### 23.1 VCLAMP_POS is hardware-set
+
+The current direction is that `VCLAMP_POS` is defined in hardware for each protection/voltage domain.
+
+It is not intended to be a runtime firmware parameter.
+
+This provides a hard protection boundary that software cannot accidentally move outside the translator-safe envelope.
+
+The exact value may be hand-tuned per Bison hardware implementation or per domain based on the intended DUT electrical envelope.
+
+### 23.2 Positive clamp-current indication
+
+A useful way to detect external positive overvoltage is to monitor current flowing into the positive clamp rail.
+
+Multiple signal clamp diodes within one bank may share the same `VCLAMP_POS` sink path:
+
+```
+DUT0 --R--+---- translator
+          +-->|--+
+DUT1 --R--+---- translator
+          +-->|--+---- clamp bus ---- current detector ---- VCLAMP_POS
+DUT2 --R--+---- translator
+          +-->|--+
+```
+
+If clamp current exceeds a threshold:
+
+- assert a bank overvoltage fault;
+- report the fault to the MCU;
+- optionally force the associated translator domain Hi-Z.
+
+This gives bank-level overvoltage indication without adding a voltage monitor to every pin.
+
+---
+
+## 24. Negative excursion protection
+
+For Bison's primary target of digital embedded DUTs, the expected negative fault is not a sustained negative supply rail.
+
+The realistic problem is transient undershoot caused by:
+
+- ringing;
+- ground bounce;
+- cable / fixture inductance;
+- partial contact;
+- hot insertion/removal.
+
+The expected protection envelope is therefore on the order of roughly `-0.7 V` to `-1 V`, not arbitrary multi-volt negative abuse.
+
+For the initial digital-only architecture, the preferred simple option is:
+
+```
+DUT ---- Rsmall ----+---- translator pin
+                    |
+                    +---- Schottky clamp ----> GND
+```
+
+The external Schottky should begin carrying current before the translator's internal negative clamp becomes significantly stressed.
+
+The small series resistor limits transient clamp current while keeping high-speed signal integrity acceptable.
+
+Exact component values require calculation from:
+
+- translator negative absolute maximum and clamp-current rating;
+- diode forward-voltage curve;
+- temperature;
+- expected worst credible undershoot;
+- signal edge rate and line capacitance.
+
+---
+
+## 25. Deferred negative clamp rail concept
+
+A dedicated negative clamp rail remains a valid future architecture and is intentionally documented here rather than discarded.
+
+Conceptually:
+
+```
+                     upper clamp
+translator pin ------|<|------ VCLAMP_POS
+
+translator pin ------|>|------ VCLAMP_NEG
+                     lower clamp
+```
+
+with `VCLAMP_NEG` held slightly below ground, for example in the few-hundred-millivolt negative range.
+
+Such a rail could provide:
+
+- a defined negative clamp threshold independent of diode Vf to ground;
+- better symmetry with the positive clamp architecture;
+- explicit negative clamp-current monitoring;
+- a useful basis for future bipolar or analog-capable Bison variants.
+
+However, generating and validating a reliable rail such as approximately `-0.2 V` to `-0.3 V` is not a trivial two-resistor regulator exercise.
+
+It would require careful analysis of:
+
+- negative-rail generation;
+- clamp sink/source capability;
+- startup and shutdown sequencing;
+- stability with clamp-bus capacitance;
+- fault-current handling;
+- threshold drift with temperature;
+- behavior if the negative-bias generator is absent or faulted;
+- interaction with externally driven DUT signals;
+- overvoltage detection and fault latching.
+
+A likely implementation would generate a more conventional negative bias rail and derive the near-ground clamp threshold with an active reference/sink stage rather than attempt to regulate directly at only a few hundred millivolts below ground.
+
+This is considered a genuinely useful future architecture, especially if Bison expands toward analog or bipolar DUT interfaces, but it is not currently justified for the V1 digital 3.3 V / 5 V use case.
+
+---
+
+## 26. Protection-domain count as a product-level tradeoff
+
+Once a protection domain includes:
+
+- its own VCCB generation;
+- overcurrent sensing / shutdown;
+- hardware OE fault path;
+- positive clamp rail;
+- positive clamp-current fault detection;
+
+the number of independently protected voltage domains becomes a meaningful BOM, board-area, and complexity decision.
+
+The current order-of-magnitude target is a small number of domains, likely no more than approximately four unless a concrete use case justifies more.
+
+This is not yet a frozen channel-count requirement.
+
+The design should prefer wide, well-utilized protection domains and use translator-package width and signal assignment to balance:
+
+- total I/O count;
+- voltage flexibility;
+- fault-detection sensitivity;
+- cost;
+- routing;
+- protection-component duplication.
+
