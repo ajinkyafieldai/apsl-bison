@@ -240,7 +240,7 @@ USB-C remains a service/debug interface concept but is not part of the frozen fr
 
 The DUT/fixture signal connector is part of the frozen front-panel set.
 
-### 11.1 DUT-power barrel jack
+### 11.1 DUT-power input
 
 The front barrel jack is the dedicated DUT-power input.
 
@@ -252,6 +252,27 @@ The anti-vandal state machine uses DUT-power availability as an input:
 - valid DUT power present -> Idle — DUT Power Available.
 
 The barrel jack is an input to Bison's controlled DUT-power path; it does not directly energize the DUT.
+
+### 11.2 DUT-power output
+
+The controlled DUT-power output uses a Weidmüller 1943810000 pluggable screw-terminal system, 2 position, 5.08 mm pitch.
+
+The output is marked clearly with `+` and `-` polarity silkscreen.
+
+The connector choice is intentionally different from the DUT-power input barrel jack so input and controlled output are visually and mechanically distinct.
+
+### 11.3 Reverse-polarity protection — open electrical design item
+
+Connector selection does not eliminate polarity-reversal faults because the customer constructs the fixture cable.
+
+The DUT power-stage design must therefore explicitly protect against both of the following:
+
+1. **Reversed DUT-power input** at the barrel jack.
+2. **Reversed DUT-power output wiring** caused by a customer cable or fixture that swaps DUT `+` and `-`.
+
+The final protection topology is not frozen here.
+
+The requirement is that these cases are treated as intentional fault scenarios during DUT power-stage design, including preventing destructive back-power paths through Bison sensing, signal-ground, clamp, translator, or other interface circuitry.
 
 ---
 
@@ -294,5 +315,5 @@ The following are now frozen as the Bison front-panel UI baseline:
 - DUT functional PASS/FAIL is carried through the fixture interface and shown in the web UI;
 - rear IEC switch is the hard Bison power switch;
 - front anti-vandal control is for DUT execution only;
-- frozen front-panel physical set is: Ethernet + DUT/fixture connector + RGB anti-vandal + RESET pinhole + DUT-power barrel jack;
+- frozen front-panel physical set is: Ethernet + DUT/fixture connector + RGB anti-vandal + RESET pinhole + DUT-power input barrel jack + DUT-power output Weidmüller 1943810000 pluggable screw terminal;
 - USB-C is not part of the frozen front-panel baseline.
