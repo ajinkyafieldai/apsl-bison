@@ -29,8 +29,6 @@ Examples:
 
 The RA6M3 must never be treated as the fixture protection element.
 
-Conceptually:
-
 ```
 RA6M3
   |
@@ -69,41 +67,30 @@ The exact manufacturer and device remain to be selected after electrical verific
 
 ### 2.2 Auto-direction translators
 
-TXS/TXB-style automatic direction translators are not preferred for the general Bison fixture interface.
-
-Reasons include:
-
-- behavior depends strongly on DUT capacitance and pull-ups
-- loading varies between DUTs and interposers
-- edge accelerators / one-shots can create difficult-to-predict behavior
-- they do not provide the deterministic interface contract wanted for reusable test equipment
+TXS/TXB-style automatic direction translators are not preferred for the general Bison fixture interface because their behavior depends heavily on DUT capacitance, pull-ups, and loading.
 
 ### 2.3 I2C
 
-I2C is a special case and should use an open-drain/bidirectional translation topology designed specifically for I2C.
-
-Do not force I2C through the push-pull 74x245 architecture.
+I2C remains a special case and should use an open-drain/bidirectional translation topology designed specifically for I2C.
 
 ---
 
 ## 3. Voltage banks
 
-The DUT-facing translated I/O is divided into voltage banks.
-
-For a push-pull bank:
+The DUT-facing translated I/O is divided into voltage domains controlled by VCCB rails.
 
 ```
 RA6M3 side                    DUT side
    VCCA                         VCCB
     |                            |
-    +------ 74x245 bank --------+
+    +------ translator ----------+
               |
               +---- DUT signals
 ```
 
 VCCA is expected to be the RA6M3 logic rail.
 
-VCCB is generated per bank and defines the DUT-facing logic level for that bank.
+VCCB defines the DUT-facing logic level.
 
 The immediate requirement is reliable 3.3 V and 5 V operation. Other bank voltages may be considered later, but are not frozen by this document.
 
@@ -115,21 +102,19 @@ A bank voltage is configuration, not a live signal-routing function. Signals rem
 
 Changing a bank voltage while the DUT is active is prohibited.
 
-Hard invariant:
-
-> A bank VCCB may only be changed while the DUT is unpowered and the corresponding translators are Hi-Z.
+> A VCCB rail may only be changed while the DUT is unpowered and every translator using that rail is Hi-Z.
 
 Expected startup/configuration sequence:
 
 1. DUT power OFF.
-2. All DUT-facing translator banks Hi-Z.
-3. Configure the required VCCB for each bank.
-4. Enable the bank supply/regulator.
-5. Wait for the rail to settle and, where practical, verify it.
-6. Enable the required translator banks.
+2. All DUT-facing translator groups Hi-Z.
+3. Configure the required VCCB rails.
+4. Enable the bank regulators.
+5. Wait for the rails to settle and, where practical, verify them.
+6. Enable the required translator groups.
 7. Enable DUT power.
 
-Fixture removal follows the corresponding safe direction:
+Fixture removal follows the safe direction:
 
 1. DUT power OFF.
 2. Translators Hi-Z.
@@ -141,98 +126,119 @@ This sequencing works together with the dedicated FIXTURE_INTERLOCK architecture
 
 ---
 
-## 5. What actually makes output contention dangerous
+## 5. What makes output contention dangerous
 
 Bison does not need to detect the abstract condition "two outputs are connected."
 
-Output-to-output connection is harmless if both drivers produce the same state.
+If both outputs drive the same state, there is no meaningful fault.
 
-The damaging case is opposing drive states, for example:
+The damaging case is opposing drive states:
 
 ```
 Bison output: HIGH
 DUT output:   LOW
 ```
 
-The relevant failure mechanism is:
-
-> excessive current through the output stages, followed by excessive junction heating.
+The actual failure mechanism is excessive current through the output stages followed by excessive junction heating.
 
 Therefore the useful protection quantity is current, not inferred logic-state disagreement.
-
-This is an important simplification.
 
 ---
 
 ## 6. Avoid blanket series resistance
 
-A blanket series resistor on every DUT-facing digital line is not the preferred protection mechanism.
+A blanket series resistor on every DUT-facing digital line is not the preferred protection mechanism because it changes source impedance, edge shape, timing, and high-speed behavior.
 
-Reasons:
+Series resistance may still be used where required for signal-integrity reasons, but it should not be the primary Bison fault-protection mechanism.
 
-- it changes source impedance
-- it alters edge shape
-- it interacts with fixture/cable capacitance
-- it complicates timing
-- it can reduce usable SPI/high-speed GPIO performance
-- the required resistance for meaningful short-circuit protection may be much larger than desirable for signal integrity
-
-Series resistance can still be used where required for signal-integrity reasons, but it should not be the primary Bison fault-protection strategy.
-
-Likewise, putting a generic analog mux/switch in every signal path purely for protection is not currently preferred because the additional RON, capacitance, bandwidth limits, and cost must be justified by a real protection benefit.
+Similarly, a generic analog mux/switch should not be inserted into every high-speed signal path unless it buys a specific protection capability worth the added RON, capacitance, bandwidth loss, and cost.
 
 ---
 
-## 7. Bank-level overcurrent detection
+## 7. Current protection architecture
 
-The current preferred protection architecture is to monitor the supply current of each push-pull translator bank.
-
-Concept:
+The current preferred architecture is to monitor the current consumed by a translator protection domain and use a hardware current fault to disable that domain.
 
 ```
                  +--------------------> current monitor / comparator
                  |
-VIO_BANK ---- RSHUNT -----------------> 74x245 VCCB
+VCCB_SOURCE -- RSHUNT ----------------> translator protection domain
                                           |
-                                          +---- multiple DUT signals
+                                          +---- DUT signals
 
 current fault ---------------------------> hardware OE kill
 ```
 
-A single current-sense channel therefore protects a complete translator bank rather than an individual I/O.
+The key architectural refinement is that the protection domain is not fixed to "one pin", "one package", or "one whole VCCB rail".
 
-This is important both technically and economically.
-
-### 7.1 Why bank-level sensing works
-
-When a Bison output is:
-
-- shorted to ground
-- shorted to a conflicting rail
-- driven against by a DUT output
-- involved in another fault causing excessive source current
-
-the translator bank supply current rises.
-
-If the aggregate bank current exceeds a threshold that cannot occur during valid operation, the bank is declared faulted.
-
-The protection does not need to identify the offending pin.
-
-Once a fault exists, the appropriate action is to safe-state the complete bank.
+Instead, protection-domain width is a design knob.
 
 ---
 
-## 8. Hardware response
+## 8. Protection granularity is tunable
+
+The design may use different translator widths depending on the required fault-detection margin and cost.
+
+Examples:
+
+- one single-channel translator behind one monitored feed -> per-pin protection
+- one dual-channel translator -> two-pin protection domain
+- one quad translator -> four-pin protection domain
+- one 8-channel translator such as a 74x245 -> eight-pin protection domain
+- multiple translator packages sharing one monitored VCCB feed -> wider protection domain
+
+The target is not maximum granularity.
+
+> Use the widest protection domain that still gives a clean separation between legitimate operating current and a damaging fault.
+
+Per-pin protection is available if ever justified, but is expected to be too expensive for broad use.
+
+An 8-channel domain is a sensible cost-oriented starting point, then the domain can be split only where the current budget or interface behavior requires it.
+
+This gives Bison a clean optimization knob between:
+
+- BOM cost
+- protection sensitivity
+- fault isolation
+- package count
+- routing complexity
+
+---
+
+## 9. Protection-domain sizing rule
+
+The sizing criterion is:
+
+```
+I_NORMAL_MAX  <<  I_TRIP  <  I_DANGEROUS_FAULT
+```
+
+where:
+
+- `I_NORMAL_MAX` is the worst-case legitimate aggregate current for the protection domain;
+- `I_TRIP` is the hardware overcurrent threshold;
+- `I_DANGEROUS_FAULT` is the current level at which the translator/output stage cannot safely tolerate the protection delay.
+
+The domain width should be reduced when legitimate aggregate current becomes too close to the desired trip threshold.
+
+For example:
+
+- if eight channels together normally consume only a few tens of milliamps and one contention event pushes the domain well above 100 mA, an 8-channel domain is attractive;
+- if eight channels can legitimately approach the trip threshold, split the domain into smaller groups.
+
+The protection width is therefore determined by current-margin math, not by an arbitrary rule.
+
+---
+
+## 10. Hardware response
 
 Protection must not depend on firmware reaction time.
-
-The intended path is:
 
 ```
 contention / short
        |
        v
-bank current rises
+domain current rises
        |
        v
 fast current comparator
@@ -244,23 +250,18 @@ hardware latch
 translator OE -> disabled
        |
        v
-complete bank -> Hi-Z
+complete protection domain -> Hi-Z
 ```
 
-The MCU also receives the fault indication for:
-
-- logging
-- test failure reporting
-- determining recovery policy
-- clearing/rearming the protection when appropriate
+The MCU also receives the fault indication for logging, test failure reporting, recovery policy, and deliberate re-arming.
 
 The fault should remain latched until deliberately cleared rather than repeatedly oscillating into a persistent short.
 
-A current-sense comparator with an integrated latch may remove the need for a separate external latch.
+A current-sense comparator with an integrated latch may eliminate the need for a separate latch.
 
 ---
 
-## 9. INA301-class solution
+## 11. INA301-class solution
 
 The INA301 is currently a useful candidate/reference architecture because it combines:
 
@@ -268,63 +269,49 @@ The INA301 is currently a useful candidate/reference architecture because it com
 - amplification
 - a fast overcurrent comparator
 - approximately microsecond-class fault response
-- a comparator/alert output
+- alert output
 - analog current-monitor output
 
 The exact device is not frozen.
 
-The important architectural point is that a roughly USD 1 protection device is acceptable when it protects an entire bank rather than one signal.
+A roughly USD 1 protection IC is acceptable when amortized across a useful protection domain rather than used per individual pin.
 
-For example, one protection channel supervising an eight-bit translator bank amortizes the cost across eight DUT-facing signals.
-
-A cheaper discrete comparator solution may still be considered, but cost pressure is significantly lower at bank granularity.
+This is one reason an 8-channel translated domain is attractive if its current margins work.
 
 ---
 
-## 10. Preliminary current threshold
+## 12. Preliminary current threshold
 
 A threshold around 100 mA has been discussed as a plausible starting point.
 
 This is not yet a frozen specification.
 
-The desired relationship is:
-
-```
-maximum legitimate aggregate bank current
-          <<
-
-protection threshold
-          <
-
-current / energy capable of damaging the translator during the protection delay
-```
-
 A 100 mA threshold is attractive only if:
 
 1. valid operation remains comfortably below it;
-2. the translator can safely survive the fault current for the detector + latch + OE-disable delay;
-3. the protection path reliably disables the bank before damaging thermal energy accumulates.
+2. one meaningful fault reliably drives the monitored current above it;
+3. the translator can safely survive the fault current for the detector + latch + OE-disable delay.
 
-Normal operating current should have substantial margin below the trip point. The design should not rely on distinguishing, for example, 90 mA normal operation from a 100 mA fault.
+Normal operation should have substantial margin below the trip point.
 
 ---
 
-## 11. Translator survivability requirement
+## 13. Translator survivability requirement
 
-This architecture does not require the translator to survive an output short indefinitely.
+The translator does not need to survive a short indefinitely.
 
-It requires the translator to survive:
+It must survive:
 
 > the worst-case fault current for the complete protection reaction time.
 
-For each selected translator the design must verify:
+For each selected translator verify:
 
 - absolute maximum per-pin output current
 - aggregate/package current limits
 - output short-circuit behavior
 - contention behavior where documented
 - output impedance / expected short current
-- thermal transient capability
+- transient thermal capability
 - OE disable propagation time
 - powered-off / partial-power-down behavior
 - backfeed paths
@@ -337,86 +324,70 @@ current detector response
 + translator OE disable delay
 ```
 
-The resulting transient electrical and thermal stress must be demonstrably safe.
+The resulting transient stress must be demonstrably safe.
 
 ---
 
-## 12. Why precision is not the main requirement
+## 14. Precision is not the primary requirement
 
-The protection circuit is primarily answering a binary question:
+The protection circuit is primarily answering:
 
-> Is bank current unquestionably outside normal operation?
+> Is current unquestionably outside valid operation?
 
-It is not intended to be precision instrumentation.
+Exact current measurement accuracy is secondary to fast and predictable trip behavior.
 
-Therefore:
+An analog current-monitor output is useful but optional.
 
-- exact current measurement accuracy is secondary
-- fast and predictable trip behavior is more important
-- threshold tolerance only needs to support a clear gap between valid and fault current
-- an analog current-monitor output is useful but optional
-
-If a future cheaper solution provides an adequate fast comparator without precision current telemetry, it remains a valid candidate.
+A cheaper solution remains acceptable if it gives adequate threshold accuracy and fault response.
 
 ---
 
-## 13. PTC discussion
+## 15. PTC discussion
 
 A PTC/PPTC was considered as a passive protection mechanism.
 
-A PTC responds to sustained overcurrent by self-heating and transitioning to a high-resistance state.
+It is attractive as a passive backstop, but it is not sufficient as the primary protection method because trip behavior is thermal and relatively slow.
 
-It is attractive as a passive backstop, but it is not currently considered sufficient as the primary protection method because:
-
-- trip behavior is thermal
-- trip time is relatively slow
-- a translator must survive the initial fault until the PTC heats
-- placing a PTC in each signal path adds series impedance and can affect high-speed behavior
-
-A PTC could potentially be used on a bank supply as a last-resort passive protection mechanism, but the primary design direction is fast electronic current detection followed by OE shutdown.
+A PTC could potentially protect a monitored VCCB feed as a last-resort passive mechanism, but fast electronic detection followed by OE shutdown remains the primary design direction.
 
 ---
 
-## 14. Overvoltage is a separate problem
+## 16. Overvoltage is a separate problem
 
-Bank overcurrent protection does not by itself protect a DUT-facing signal against an externally applied excessive voltage.
+Current-domain protection does not by itself protect a DUT-facing signal against an externally applied excessive voltage.
 
 Example:
 
 - a DUT or fixture accidentally applies 12 V to a Bison digital pin.
 
-That fault enters through the signal pin rather than the bank VCCB feed.
+That fault enters through the signal pin rather than through the monitored VCCB source.
 
-Therefore the design separates:
+Therefore the design treats:
 
 ### Contention / short protection
 
-Handled primarily by:
+with:
 
-- bank-current monitoring
-- hardware fault detection
-- asynchronous OE disable
+- monitored VCCB current
+- hardware overcurrent detection
+- asynchronous OE shutdown
 
 ### External signal overvoltage
 
-Requires separate consideration of:
+as a separate design problem requiring consideration of:
 
-- translator input/output absolute maximum ratings
+- translator pin absolute maximum ratings
 - powered-off tolerance
-- clamp structures
-- fault-protected signal switches/buffers where justified
+- internal clamp structures
+- fault-protected switches/buffers where justified
+- external clamps / transient protection
 - protocol-specific protection
-- external transient/ESD protection
-
-Fault-protected analog switches were investigated as one possible DUT-edge element, but they are not currently mandatory because they often solve overvoltage faults without solving same-voltage output contention, while adding RON and capacitance to the high-speed path.
 
 ---
 
-## 15. Reverse-current and externally powered DUT cases
+## 17. Reverse-current and externally powered DUT cases
 
 A DUT can remain externally powered even when Bison has disabled DUT power.
-
-The design therefore cannot assume that turning off Bison's DUT supply removes voltage from DUT-facing signals.
 
 The selected translator/protection topology must explicitly handle:
 
@@ -426,96 +397,93 @@ The selected translator/protection topology must explicitly handle:
 - fixture insertion/removal with one side powered
 - partial contact
 
-Ioff / partial-power-down behavior is therefore a mandatory translator-selection consideration.
+Ioff / partial-power-down behavior is therefore mandatory to evaluate.
 
-Bank supply current sensing is excellent for current sourced by Bison. It may not observe every possible reverse-energy path from the DUT, so reverse-current/backfeed behavior must be checked separately during device selection.
-
----
-
-## 16. High-speed interfaces require the same protection
-
-Protection is not limited to slow generic GPIO.
-
-UART, SPI, and high-speed DUT-facing GPIO must also survive realistic fixture faults.
-
-The selected architecture is deliberately attractive here because:
-
-- the normal signal path remains only the translator
-- no protection resistor is required purely for overcurrent protection
-- no analog switch is necessarily required in series
-- the fast current detector is on the bank supply, not the signal path
-- hardware OE shutdown can be asynchronous to firmware
-
-This preserves the best chance of maintaining clean high-speed digital behavior while still protecting Bison from sustained contention.
+Current sensing on the translator VCCB feed may not observe every possible reverse-energy path from the DUT, so reverse-current/backfeed behavior must be checked separately.
 
 ---
 
-## 17. Fault granularity
+## 18. High-speed interfaces require the same protection
 
-A current fault on one signal disables the entire associated voltage bank.
+UART, SPI, and high-speed DUT-facing GPIO require protection as well as slow GPIO.
+
+The current-domain architecture is attractive because the high-speed signal path can remain extremely simple:
+
+```
+MCU -> translator -> DUT
+```
+
+The protection sensing lives on the translator supply rather than in series with every signal.
+
+This preserves signal integrity while still allowing hardware shutdown on sustained contention.
+
+---
+
+## 19. Fault granularity
+
+A current fault disables the complete protection domain associated with the monitored feed.
 
 This is intentional.
 
-Once one DUT/fixture connection is electrically invalid, continuing to drive adjacent signals in that bank is not useful enough to justify per-pin protection complexity.
+The design does not currently require identification of the exact offending pin in hardware.
 
-Software may later use knowledge of the operation being performed when the trip occurred to identify the likely offending signal.
+Software can use knowledge of the operation that was active when the trip occurred to aid diagnosis.
 
-No requirement currently exists for per-pin current sensing.
+Protection-domain width may be tuned from one channel to eight channels or more depending on cost and current margin.
 
 ---
 
-## 18. Current architecture summary
-
-For a push-pull DUT-facing bank:
+## 20. Current architecture summary
 
 ```
-                 BANK_VIO
-                    |
-                  RSHUNT
-                    |
-             +------+------+
-             |             |
-             |       current-sense
-             |        comparator
-             |             |
-             v             v
-           VCCB          FAULT
-             |             |
-        +---------+        +------> MCU fault input
-MCU --->| 74x245  |        |
-        +---------+        +------> latch / hardware OE kill
-             |
-             v
-        DUT / fixture
+                 VCCB_SOURCE
+                     |
+                   RSHUNT
+                     |
+              +------+------+
+              |             |
+              |       current-sense
+              |        comparator
+              |             |
+              v             v
+      translator group    FAULT
+              |             |
+              |             +------> MCU fault input
+              |             |
+              |             +------> latch / hardware OE kill
+              |
+              v
+         DUT / fixture
 ```
 
 The protection philosophy is:
 
-> Detect abnormal aggregate translator current quickly, force the complete bank Hi-Z in hardware, and keep the high-speed signal path as simple as possible.
+> Detect abnormal aggregate current quickly, force the associated translator group Hi-Z in hardware, and keep the high-speed signal path as simple as possible.
 
 ---
 
-## 19. Items still to verify
+## 21. Items still to verify
 
 Before freezing the implementation:
 
-1. Select the exact 74x245-family translator.
+1. Select translator family members and useful widths.
 2. Characterize or calculate worst-case contention current.
-3. Establish realistic maximum normal bank current.
-4. Select a provisional trip threshold.
-5. Verify detector response time at that threshold.
-6. Verify latch/OE logic propagation.
-7. Verify translator OE disable time.
-8. Calculate transient power/energy during a worst-case fault.
-9. Verify package-level aggregate current limits.
-10. Verify behavior for reverse drive / externally powered DUT.
-11. Decide whether any passive backup protection is worthwhile.
-12. Determine whether particular interfaces need additional DUT-edge overvoltage protection.
-13. Determine bank partitioning based on voltage domains, direction groups, expected current, and interface assignment.
+3. Establish worst-case legitimate current for each proposed protection domain.
+4. Determine whether 8-channel domains work for most interfaces.
+5. Split to 4/2/1-channel domains only where required.
+6. Select a provisional trip threshold.
+7. Verify detector response at that threshold.
+8. Verify latch/OE propagation.
+9. Verify translator OE disable time.
+10. Calculate transient power/energy during a worst-case fault.
+11. Verify package-level aggregate current limits.
+12. Verify reverse-drive / externally powered DUT behavior.
+13. Decide whether passive backup protection is worthwhile.
+14. Design the separate DUT-side overvoltage protection strategy.
 
 ---
 
-## 20. Design decisions captured here
+## 22. Design decisions captured here
 
 Current decisions/directions:
 
@@ -523,14 +491,17 @@ Current decisions/directions:
 - Push-pull translation uses deterministic direction-controlled dual-supply translators.
 - 74x245-class parts are the current translation direction.
 - Auto-direction translators are not the preferred general solution.
-- DUT-facing translated signals are grouped into voltage banks.
-- Bank voltage cannot be changed while the DUT is powered or translators are enabled.
+- VCCB voltage cannot change while the DUT is powered or translators are enabled.
 - Blanket series resistance is not the primary protection method.
 - Output contention is treated as an overcurrent/thermal problem.
-- Overcurrent detection is bank-level, not per-I/O.
-- Fault response must be hardware-driven and force the bank Hi-Z.
-- Approximately USD 1 of protection electronics per bank is acceptable.
+- Current protection is applied per translator protection domain, not necessarily per pin or per whole voltage rail.
+- Protection-domain width is a tunable design knob.
+- Use the widest domain that preserves a clear fault-current margin.
+- Per-pin protection is available but not the default because it would inflate cost.
+- 8-channel protection domains are a sensible starting point where the current budget allows.
+- Fault response must be hardware-driven and force the affected translator group Hi-Z.
+- Approximately USD 1 of protection electronics per useful domain is acceptable.
 - INA301-class fast current-sense/comparator devices are credible candidates.
 - A roughly 100 mA trip level is a discussion starting point, not a frozen requirement.
 - High-speed interfaces require protection as well as slow GPIO.
-- Signal overvoltage is a distinct problem from bank overcurrent and remains to be solved/verified separately.
+- Signal overvoltage is a distinct problem from overcurrent and remains to be solved separately.
