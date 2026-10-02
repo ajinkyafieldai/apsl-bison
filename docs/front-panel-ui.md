@@ -255,11 +255,13 @@ The barrel jack is an input to Bison's controlled DUT-power path; it does not di
 
 ### 11.2 DUT-power output
 
-The controlled DUT-power output uses a Weidmüller 1943810000 pluggable screw-terminal system, 2 position, 5.08 mm pitch.
+The controlled DUT-power output uses a 2-position, 5.08 mm pluggable screw-terminal system.
 
-The output is marked clearly with `+` and `-` polarity silkscreen.
+The preferred visual treatment is an orange/black connector combination so the controlled DUT-power output is immediately distinct from the DUT-power input barrel jack and the signal connectors.
 
-The connector choice is intentionally different from the DUT-power input barrel jack so input and controlled output are visually and mechanically distinct.
+The front-panel marking must clearly identify the output as `DUT POWER OUT` and mark `+` and `-` polarity adjacent to the two positions.
+
+The exact mating/header color split and final manufacturer part numbers may be frozen during detailed mechanical/component selection, but the pluggable 2-position orange/black architecture is now the baseline.
 
 ### 11.3 Reverse-polarity protection — open electrical design item
 
@@ -315,5 +317,5 @@ The following are now frozen as the Bison front-panel UI baseline:
 - DUT functional PASS/FAIL is carried through the fixture interface and shown in the web UI;
 - rear IEC switch is the hard Bison power switch;
 - front anti-vandal control is for DUT execution only;
-- frozen front-panel physical set is: Ethernet + DUT/fixture connector + RGB anti-vandal + RESET pinhole + DUT-power input barrel jack + DUT-power output Weidmüller 1943810000 pluggable screw terminal;
+- frozen front-panel physical set is: Ethernet + DUT/fixture connector + RGB anti-vandal + RESET pinhole + DUT-power input barrel jack + DUT-power output 2-position 5.08 mm orange/black pluggable screw terminal;
 - USB-C is not part of the frozen front-panel baseline.
