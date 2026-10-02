@@ -27,13 +27,19 @@ Its intended roles include:
 - coordination of multiple Bison units;
 - PTP-based time synchronization.
 
-USB remains the preferred local bring-up and recovery interface, while Ethernet provides the network-native path for installed test infrastructure.
+Ethernet is the **supported external host interface** for Bison.
+
+It is the network-native path for installed test infrastructure, external integrations, remote operation, and high-throughput data transport.
 
 ### USB-C
 
-USB-C provides the local host interface for bring-up, development, recovery, and direct bench use.
+USB-C is retained as an **internal/service interface** for APSL bring-up, development, recovery, and direct bench work.
 
-Bison exposes one composite USB device with two CDC ACM interfaces.
+USB is not part of the supported external/customer-facing host interface contract. External integrations should use Ethernet.
+
+This avoids making Bison's external product identity or distribution model depend on USB VID/PID allocation. Informally: the project owner strongly dislikes the USB-IF VID/PID bureaucracy.
+
+For internal/service use, Bison exposes one composite USB device with two CDC ACM interfaces.
 
 During initial development:
 
@@ -143,7 +149,9 @@ The exact LED set is not yet frozen.
 ```text
 INFRASTRUCTURE SIDE                          DUT SIDE
 
-[ Ethernet ] [ USB-C ] [ Barrel Power ] --> [ BISON ] --> [ Wide Ribbon ]
+[ Ethernet* ] [ USB-C(service) ] [ Barrel Power ] --> [ BISON ] --> [ Wide Ribbon ]
+
+* supported external host interface
 
                                      + a small number of status LEDs
 ```
