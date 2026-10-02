@@ -677,3 +677,52 @@ The design should prefer wide, well-utilized protection domains and use translat
 - routing;
 - protection-component duplication.
 
+---
+
+## 27. ESD protection
+
+Human Body Model (HBM) ratings are treated as component-level robustness information, not as the external-interface design target.
+
+Bison exposes DUT-facing signals through ribbon/interposer/pogo infrastructure. The relevant system-level ESD standard is therefore IEC 61000-4-2.
+
+The current design direction is:
+
+> Every externally exposed DUT-facing signal should have dedicated system-level ESD protection at the Bison connector boundary rather than relying on the translator's internal HBM robustness.
+
+For high-speed digital signals, use low-capacitance ESD/TVS devices placed as close as practical to the connector entry point.
+
+Conceptually:
+
+```
+DUT / pogo
+    |
+connector
+    |
+low-capacitance ESD protector
+    |
+small series resistor / overvoltage clamp network
+    |
+translator
+```
+
+Placement and return-path inductance are critical because IEC 61000-4-2 events have very fast edges.
+
+The ESD protector should therefore have:
+
+- a very short path from the exposed signal to the protection device;
+- a very short, low-inductance discharge return;
+- capacitance low enough not to compromise UART/SPI/high-speed GPIO behavior;
+- a system-level IEC 61000-4-2 rating suitable for the product target.
+
+A reasonable initial target is IEC 61000-4-2 Level 4, including approximately +/-8 kV contact discharge, subject to confirmation during compliance planning.
+
+The ESD layer is distinct from the other protection mechanisms:
+
+- ESD protection handles fast electrostatic transients;
+- overvoltage clamps handle slower externally applied excessive voltages;
+- VCCB current monitoring handles output contention and sustained overcurrent.
+
+These mechanisms may share physical components where that is proven safe, but they should be treated as separate electrical requirements during design verification.
+
+HBM/CDM ratings remain relevant when selecting the translator and other ICs, but they do not substitute for system-level connector ESD protection.
+
