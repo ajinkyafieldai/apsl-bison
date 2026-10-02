@@ -229,6 +229,7 @@ Do not duplicate link/activity with separate front-panel LEDs unless a concrete 
 The front panel is now frozen to the following user-facing elements:
 
 - Ethernet;
+- DUT / fixture connector;
 - RGB anti-vandal momentary pushbutton;
 - recessed RESET pinhole;
 - DUT-power barrel jack.
@@ -237,7 +238,7 @@ No other front-panel connector or indicator is part of the frozen baseline.
 
 USB-C remains a service/debug interface concept but is not part of the frozen front-panel connector set.
 
-The DUT/fixture signal connector is also not part of the frozen front-panel set and should be placed elsewhere in the mechanical architecture.
+The DUT/fixture signal connector is part of the frozen front-panel set.
 
 ### 11.1 DUT-power barrel jack
 
@@ -282,7 +283,7 @@ The following are now frozen as the Bison front-panel UI baseline:
 - one RGB illuminated anti-vandal momentary button;
 - one recessed RESET pinhole;
 - no separate READY, DUT, PWR, or FAULT LEDs;
-- Ethernet is the only communications connector on the frozen front panel;
+- Ethernet and the DUT/fixture connector are the two primary front-panel interfaces;
 - DUT power enters through a dedicated front-panel barrel jack;
 - Ethernet link/activity remains on the RJ45;
 - the anti-vandal button is software-controlled and does not directly switch power;
@@ -293,5 +294,5 @@ The following are now frozen as the Bison front-panel UI baseline:
 - DUT functional PASS/FAIL is carried through the fixture interface and shown in the web UI;
 - rear IEC switch is the hard Bison power switch;
 - front anti-vandal control is for DUT execution only;
-- frozen front-panel physical set is: Ethernet + RGB anti-vandal + RESET pinhole + DUT-power barrel jack;
+- frozen front-panel physical set is: Ethernet + DUT/fixture connector + RGB anti-vandal + RESET pinhole + DUT-power barrel jack;
 - USB-C is not part of the frozen front-panel baseline.
