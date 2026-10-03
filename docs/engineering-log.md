@@ -1,5 +1,15 @@
 # Bison Engineering Log
 
+## 2026-10-03 — Local storage, SDRAM buffering and controlled shutdown recorded
+
+Bison will use internal SD/microSD storage as appliance-owned persistent storage for the active recipe/assets, run logs, structured results, requested captures, pending synchronization and staged runtime/update bundles. Retention is time-based; active/current/unsynchronized data remains pinned until safe to expire or synchronize.
+
+External SDRAM is now a probable implementation requirement if high-rate capture buffering or frequent SD writes would disturb deterministic runtime behavior. Internal SRAM remains reserved for the FreeRTOS/runtime core and low-latency state, with SDRAM used for bulk buffering and SD used for durable storage. Final SDRAM capacity remains an implementation decision driven by worst-case capture bandwidth.
+
+Bison should also include a dedicated hold-up capacitor or supercapacitor path for controlled shutdown on loss of Bison operating power. The hold-up window should allow the firmware to stop new work, place outputs safe, checkpoint the active run, flush critical buffered data/filesystem metadata to SD and shut down cleanly. This supplements rather than replaces the existing hardware fault/interlock paths.
+
+See [host UI and recipe architecture](host-ui-and-recipes.md).
+
 ## 2026-10-03 — Host UI, onboarding and recipe architecture documented
 
 The host-side product model is now recorded before recipe-language design begins.
