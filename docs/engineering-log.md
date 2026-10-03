@@ -1,5 +1,19 @@
 # Bison Engineering Log
 
+## 2026-10-03 — Host UI, onboarding and recipe architecture documented
+
+The host-side product model is now recorded before recipe-language design begins.
+
+The normal OOBE is Ethernet-first: power Bison, connect Ethernet directly or through a qualified USB-to-Ethernet accessory, and open `bison.local`. Bison should attempt DHCP and fall back to IPv4 link-local, advertising mDNS in either case. Manual networking belongs in troubleshooting, not ordinary onboarding. Service USB remains service-only pending a customer-facing VID/PID.
+
+The host UI is split into a lean device-resident appliance UI and a heavier Internet-hosted engineering UI. Bison itself must provide Live, current/run logs, measurements, faults, controls, existing recipe selection/execution and basic device management offline. Recipe creation/editing, richer validation, Git workflows and asset management may be downloaded from the APSL-hosted web application and communicate locally with Bison from the browser.
+
+Recipes are defined as plain-text, Git-versioned project artifacts and represent the complete executable DUT test definition: Bison configuration, signal mapping, sequencing, cause/effect expectations, timing, pass/fail rules, flash/templates, parameters, captures and operator steps. Git is the source of truth; Bison may cache recipes and must snapshot the exact recipe/assets used for each run.
+
+Ten canonical tests were selected to drive the DSL/editor design: basic power-up, firmware flash + boot, cause/effect timing, analog transfer function, fault injection/recovery, protocol transaction, power sequencing, endurance/repeat, operator-assisted flow and parameterized production test. Syntax remains intentionally open until these are expressed in a minimal pseudo-language.
+
+See [host UI and recipe architecture](host-ui-and-recipes.md).
+
 ## 2026-10-03 — Architecture preparation walkthrough documented
 
 The external interfaces and functional blocks have been synthesized. This is a preparation-phase documentation checkpoint, not an implementation start.
