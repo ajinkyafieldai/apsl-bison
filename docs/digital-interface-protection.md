@@ -842,3 +842,14 @@ The shunt-regulator and op-amp/MOSFET approaches are both considered technically
 
 At the current stage the goal is to establish that a practical VCLAMP sink is feasible, not to select its final circuit.
 
+
+## 29. Preparation update on 3 October 2026
+
+Reversed DUT output leads can elevate DUT ground, and hence coupled signal pins, positive relative to Bison return. This fault does not establish a −5 V undershoot requirement. Cover the full maximum voltage of each DUT power variant, up to the family ceiling of 60 V, and the separate short through any remaining ground connection.
+
+Excess positive clamp current must feed a hardware-latched shutdown that disables DUT power and DUT-facing drivers. Software displays/reports the event and is outside the trip path. Keep the active circuitry in the dedicated clamp-rail protection/sink; do not assume a new active series element on every signal.
+
+The provisional timing budget is approximately 10 µs sensing plus 10 µs FET turn-off. Verify the complete latch/driver/FET delay, actual peak and aggregate current, safe clamp voltage, diode pulse ratings, active-device SOA and stored energy. A low trip threshold is not a peak-current limit. Soft-start may catch faults early, but this is DUT-dependent and is not the protection guarantee.
+
+Temperature-monitor open-drain alerts join the hardware fault line. Preserve the existing mandatory fixture interlock and safe-state behavior. See [architecture preparation](architecture-preparation.md).
+

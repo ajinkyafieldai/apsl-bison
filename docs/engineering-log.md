@@ -1,5 +1,17 @@
 # Bison Engineering Log
 
+## 2026-10-03 — Architecture preparation walkthrough documented
+
+The external interfaces and functional blocks have been synthesized. This is a preparation-phase documentation checkpoint, not an implementation start.
+
+Agreed refinements: independent IEC/isolated AC/DC/12 V operating power; DUT barrel-input pass-through variants 3.3–10 V, 10–36 V and 36–60 V with a common few-amp current target; orange/black DUT output screw terminals; dedicated pre-power check learned in the new-DUT wizard; soft-start followed by voltage checks; optional DUT-side differential ADC sensing; hardware clamp-current shutdown; complementary bleed switching with dead time; 470 µF initial discharge assumption and space for a few 2012 imperial resistors; optional dual 40 mm rear fans, front intake slots, shared PWM and separate tach inputs; I2C thermal monitors with wired-OR alerts.
+
+Reversed DUT power raises DUT ground positive relative to Bison, so full positive fault exposure must be checked against the voltage variant. The provisional source-cutoff budget is 10 µs sensing plus 10 µs FET turn-off. Neither slow ramp nor resistance precheck guarantees detection, and stored energy/peak current still require validation.
+
+Carry forward settled protocols, RGB-button behavior, modular power board, fixed logic levels, fixture interlock and proprietary product direction. Channel count and RA6M3 resource allocation remain implementation-phase work.
+
+See [architecture preparation record](architecture-preparation.md) for decisions, block responsibilities, assumptions and handoff checks.
+
 ## 2026-10-02 — Digital I/O protection reshapes the product architecture
 
 ### Context
@@ -372,3 +384,4 @@ The following remain intentionally open:
 - exact chassis / Bison 0 V / DUT 0 V bonding strategy.
 
 The current goal is architectural feasibility and fault-model completeness, not premature circuit selection.
+

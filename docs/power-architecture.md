@@ -22,7 +22,7 @@ Bison is expected to support DUTs across a broad family envelope, potentially fr
 Trying to implement one universal 3.3 V-to-48 V power path would significantly complicate:
 
 - DUT power switching;
-- Bison housekeeping conversion;
+- range-specific DUT power circuitry;
 - voltage measurement accuracy;
 - current measurement accuracy;
 - current-shunt sizing;
@@ -60,7 +60,7 @@ The power board owns the DUT power path and its range-specific circuitry.
 Its responsibilities include:
 
 - barrel-jack power input;
-- Bison housekeeping power conversion as required by that module;
+- DUT pre-power stimulus/measurement and output discharge;
 - DUT power switching;
 - DUT voltage sensing;
 - DUT current sensing;
@@ -77,39 +77,37 @@ Future power boards may implement a more capable programmable supply.
 
 The barrel jack provides the intended DUT supply voltage.
 
-For the initial pass-through power module:
+For the initial pass-through power module, the external barrel jack feeds DUT switching, protection and sensing, then the separately labeled DUT POWER OUT screw terminals. Bison does not regulate the DUT supply voltage.
 
-```text
-BARREL JACK
-    |
-    +--> Bison housekeeping conversion
-    |
-    +--> DUT power switching / sensing
-             |
-             +--> DUT
-```
-
-Bison does not regulate the DUT supply voltage on the initial pass-through module.
-
-The barrel-jack voltage is therefore the DUT supply voltage.
+Bison housekeeping power is independent: rear IEC inlet → off-the-shelf isolated AC/DC module → 12 V input to the main board → internal rails. The mains module is outside the main board. The earlier shared barrel-jack housekeeping model is superseded.
 
 ## Product-family voltage range
 
-Bison may support DUT supplies from approximately 3.3 V through 48 V **across power-board variants**.
+The agreed power-board/product voltage variants are:
 
-This is not a requirement for one universal power board.
+| DUT input range | Current rating |
+|---|---|
+| 3.3–10 V | Same across variants |
+| 10–36 V | Same across variants |
+| 36–60 V | Same across variants |
 
-Different power boards may target different voltage/current classes and use appropriately selected:
+The current target is a few amps; exact rating and range-boundary tolerances remain open. No single universal board is required.
 
-- switching devices;
-- shunts;
-- current-sense gain;
-- voltage-divider ratios;
-- protection;
-- housekeeping conversion;
-- connector/current ratings.
+DUT POWER IN is a barrel jack with clear polarity marking. DUT POWER OUT uses orange positive and black return screw terminals with explicit + / − markings.
 
-The actual voltage and current ranges of each power board are intentionally deferred.
+Each variant needs suitable switching, sensing, transient protection and thermal margins.
+
+## Precheck, soft-start, discharge and faults
+
+The architecture includes a dedicated low-current pre-power measurement path, controlled main-path ramp, hardware overcurrent cutoff, output voltage/current telemetry, and switched bleed resistors. Main-switch and bleed-switch control is complementary with dead time.
+
+The new-DUT wizard records precheck response/limits and optional DUT-side voltage sensing through differential ribbon ADC channels. A precheck is a sanity check, not guaranteed polarity detection.
+
+Clamp, logic-supply and thermal faults feed the hardware shutdown interlock. The controller does not perform time-critical protection.
+
+Use 470 µF as the initial discharge sizing assumption; at 60 V this stores about 0.85 J. Reserve space for a few 2012 imperial resistors, with actual values and pulse ratings selected during implementation.
+
+The full decisions and provisional 20 µs shutdown budget are recorded in [architecture preparation](architecture-preparation.md).
 
 ## Measurement and calibration
 
@@ -205,7 +203,7 @@ Safety-critical current or voltage limits should not depend solely on PWM interp
 
 The following are explicitly **not being designed yet**:
 
-- exact power-board voltage ranges;
+- tolerances and margins around the agreed power-board voltage ranges;
 - exact current ranges;
 - switch topology;
 - pass FET selection;
@@ -213,7 +211,7 @@ The following are explicitly **not being designed yet**:
 - current-sense amplifier;
 - voltage-divider network;
 - protection circuitry;
-- housekeeping converter topology;
+- downstream internal-rail converter topology;
 - programmable-supply topology;
 - PWM frequency and transfer function;
 - power-board connector;
@@ -223,3 +221,4 @@ The following are explicitly **not being designed yet**:
 These decisions should be made only after the rest of the Bison interface and RA6M3 resource allocation are sufficiently defined.
 
 The current goal is to freeze the **architectural boundary**, not prematurely design the power supply.
+

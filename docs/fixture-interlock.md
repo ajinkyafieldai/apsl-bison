@@ -138,3 +138,8 @@ The hierarchy is:
 4. DUT survival under abusive hot-swap conditions is desirable but not a primary design requirement.
 
 This robustness requirement should be considered when selecting every DUT-facing translator, buffer, driver, contact emulator, analog front end, and power-path component.
+
+## Preparation update on 3 October 2026
+
+The pre-power check, ramp/voltage verification, shared hardware fault override and complementary bleed control refine the earlier illustrative sequence. See [architecture preparation](architecture-preparation.md). The dedicated FIXTURE_INTERLOCK and misuse robustness requirement remain in force; whether opening the fixture also latches the shared fault is not newly decided here.
+

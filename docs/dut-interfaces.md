@@ -158,7 +158,9 @@ This provides a consistent measurement interface and gives control over:
 - protection;
 - scaling accuracy.
 
-The exact op-amp, bandwidth, input impedance, overvoltage margin, and filtering remain implementation details to be selected later.
+A mix of single-ended and differential measurements is required. The DUT wizard records measurement mode, assigned input/reference or pair, and acceptance limits. Optional DUT-side rail sensing uses these differential ribbon channels, not a new external connector.
+
+The exact op-amp, bandwidth, input impedance, overvoltage margin, filtering and differential common-mode envelope remain implementation details. Differential mode does not imply direct 60 V input tolerance.
 
 ## Level-translation philosophy
 
@@ -221,3 +223,4 @@ The following remain open:
 - exact RA6M3 pin/peripheral mapping.
 
 These should be resolved by going deeper into each peripheral class and then performing the RA6M3 resource budget.
+

@@ -13,7 +13,7 @@ The detailed electrical allocation of DUT-facing signals will be derived later f
 
 ## Infrastructure side
 
-Bison has three infrastructure-side connectors.
+Bison's infrastructure interfaces are Ethernet, service USB-C and a rear IEC operating-power inlet.
 
 ### Ethernet
 
@@ -66,15 +66,20 @@ Once reliable on-board persistent logging exists:
 - CDC1 becomes a machine-readable high-throughput data plane for DAQ, captures, protocol traces, and bulk telemetry.
 - firmware diagnostic logs move to on-board storage and are retrieved through the CLI when required.
 
-### Barrel jack
+### Bison operating power
 
-Bison uses a dedicated barrel-jack power input.
+A rear IEC inlet feeds an off-the-shelf isolated AC/DC module. The main board receives 12 V. Bison operating power is independent of DUT power, and remains on while DUT power is removed or cycled.
 
-Bison power is independent of DUT power so that Bison remains operational while DUT power is programmatically removed or cycled.
+The barrel jack is **DUT POWER IN**, not Bison's housekeeping supply.
 
 ## DUT side
 
-Bison has one primary DUT-side connector: **a wide ribbon-cable connector**.
+Bison has a **wide ribbon-cable connector** for fixed-function signals, plus separate DUT power connectors:
+
+- **DUT POWER IN:** barrel jack, polarity marked, supplying the external pass-through voltage.
+- **DUT POWER OUT:** orange positive and black return screw terminals, explicitly marked + / −.
+
+The agreed voltage variants are 3.3–10 V, 10–36 V and 36–60 V, with the same current rating across variants; the exact few-amp rating remains open.
 
 The ribbon carries the fixed-function DUT-facing capabilities of Bison.
 
@@ -130,31 +135,17 @@ This permits both conventional split-ribbon fixtures and compact direct-mating i
 
 Connector family, pitch, and pin count remain open until the RA6M3 resource allocation is understood.
 
-## Local indication
+## Local control and indication
 
-Bison includes a small number of status LEDs.
+The front panel has one RGB illuminated momentary antivandal switch. Button actions and color meanings are already defined in [front-panel UI](front-panel-ui.md); they are not reopened here. Ethernet link/activity indication is handled according to the selected connector/PHY design.
 
-Likely indications include:
+## Cooling provisions
 
-- Bison power;
-- Ethernet link/activity where not already provided by the connector;
-- DUT power state;
-- fault/error;
-- firmware/status.
+Reserve rear mounting space for two optional 40 mm fans and two front intake slots, above and below the main board. Fans use internal 12 V, one shared PWM control and two separate tach lines.
 
-The exact LED set is not yet frozen.
+## Current architecture views
 
-## Frozen external physical shape
-
-```text
-INFRASTRUCTURE SIDE                          DUT SIDE
-
-[ Ethernet* ] [ USB-C(service) ] [ Barrel Power ] --> [ BISON ] --> [ Wide Ribbon ]
-
-* supported external host interface
-
-                                     + a small number of status LEDs
-```
+See [architecture preparation](architecture-preparation.md) for the functional-block contract, protection, power sequencing and implementation handoff. Connector physical placement remains subject to panel/mechanical detail except where already explicitly settled.
 
 ## Intentionally deferred
 
@@ -165,6 +156,7 @@ The following remain open until peripheral and pin budgeting:
 - exact DUT-facing signal allocation;
 - number of protocol, analog, digital, contact-emulation, and timing-capable channels;
 - exact fixed electrical standard for each protocol/interface;
-- exact LED count and semantics.
+- final physical implementation of the already-defined front-panel RGB button.
 
 The external interface should not be reopened merely to consume available MCU pins. Internal capability should fit the frozen external product shape unless a concrete requirement shows that the interface is inadequate.
+

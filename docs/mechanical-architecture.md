@@ -193,7 +193,7 @@ Current intended rear-panel functions include:
 - integrated or adjacent fuse;
 - mains switch;
 - EMI filter where practical;
-- DUT power input terminal;
+- any rear DUT power wiring/connector placement, subject to the current external contract;
 - PE/chassis bond point;
 - any other low-frequency/service connections better suited to the rear.
 
@@ -298,7 +298,7 @@ Still to be determined:
 - exact cylindrical stop geometry;
 - exact front/rear panel thickness;
 - optional rack bracket / tray design;
-- cooling / ventilation strategy;
+- detailed cooling validation, vent dimensions and exact fan placement;
 - final chassis / PE / signal-ground bond details.
 
 ---
@@ -322,3 +322,14 @@ Current decisions/directions:
 - mount the chassis AC/DC supply independently using its specified mounting points;
 - use countersunk chassis fasteners where a flush bottom is required;
 - install the front-panel PCB last in the assembly sequence.
+
+## 12. Preparation update on 3 October 2026
+
+The operating supply is an off-the-shelf isolated AC/DC module providing 12 V to the main board. Mains remains outside the main-board electrical boundary.
+
+Reserve space for two optional rear 40 mm fans and two front intake slots, above and below the main board. Fan power is 12 V directly, with one shared PWM command and separate tach inputs. I2C thermal monitoring feeds the hardware fault line.
+
+DUT POWER IN is a polarity-marked barrel jack. DUT POWER OUT uses orange positive and black return screw terminals with explicit polarity legends. These connector types supersede earlier provisional terminal descriptions; panel placement still follows the final mechanical layout.
+
+Final fan/enclosure geometry must be reconciled with the existing 1U height target; reserving 40 mm fan mounts does not prove fit in the earlier 30–35 mm reference body. Preserve the Rev A height fallback. See [architecture preparation](architecture-preparation.md).
+
