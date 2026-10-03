@@ -588,6 +588,99 @@ This is a working semantic vocabulary, not a finalized language.
 
 The next design activity is to express all canonical tests in the smallest practical pseudo-language and identify where the model becomes awkward. That exercise will determine whether Bison needs a purpose-built DSL, a structured data format such as YAML, direct scripting, or a hybrid representation.
 
+## Local storage and controlled shutdown
+
+Bison should include internal removable flash storage, with an internal SD or microSD card as the current preferred implementation.
+
+The storage is part of the appliance, not a user-supplied workflow dependency. It exists to keep Bison operational and auditable when the host or network is unavailable.
+
+### SD card responsibilities
+
+The internal card should be sized and managed for:
+
+- the currently loaded recipe and its required assets;
+- run event logs;
+- final structured run results;
+- captures/waveforms requested by a recipe;
+- pending CI/host synchronization;
+- staged Bison runtime/update bundles;
+- the current runtime bundle and, where practical, a previous known-good rollback bundle.
+
+Capacity is not expected to be the limiting design constraint. The minimum economically sensible cards are already much larger than the ordinary Bison runtime and result data.
+
+Retention should therefore be time-based rather than based on a small fixed run count.
+
+Storage classes should behave as follows:
+
+- active recipe/runtime: pinned;
+- current run: pinned;
+- completed but unsynchronized run: pinned;
+- completed and synchronized run: eligible for expiry according to retention policy;
+- staged candidate update: pinned until promoted or discarded;
+- rollback runtime: pinned according to update policy.
+
+Network loss must not invalidate a test that Bison can safely complete locally. Bison should continue execution, buffer results locally, and synchronize later while preserving original run identifiers and timestamps.
+
+### Probable external SDRAM
+
+The RA6M3 internal SRAM is sufficient for the control/runtime core but may be too small for high-rate capture buffering if direct streaming to SD or the network interferes with deterministic test execution.
+
+The probable architecture is therefore:
+
+```text
+Internal SRAM
+  - FreeRTOS/runtime
+  - critical state
+  - DMA descriptors
+  - low-latency queues
+        |
+        v
+External SDRAM
+  - burst/sample buffers
+  - protocol captures
+  - waveform buffers
+  - event/log coalescing
+        |
+        v
+SD card
+  - durable run storage
+  - deferred synchronization
+```
+
+External SDRAM is not yet a frozen requirement or size. It should be included in implementation planning and resource allocation, with final capacity derived from worst-case aggregate capture bandwidth and the desired SD write granularity.
+
+The intended use is buffering and coalescing, not placing safety-critical control state exclusively in external memory.
+
+### Controlled shutdown on Bison power loss
+
+Bison should include energy hold-up sufficient to detect loss of its own operating supply and perform a controlled shutdown.
+
+The preferred direction is a dedicated hold-up capacitor/supercapacitor arrangement sized to keep the MCU and required storage path alive long enough to:
+
+1. detect input-power loss;
+2. stop accepting new work;
+3. place DUT-facing outputs into the required safe state;
+4. close or checkpoint the active run record;
+5. flush critical buffered data and filesystem metadata to the SD card;
+6. mark any interrupted run appropriately;
+7. shut down cleanly before the hold-up rail collapses.
+
+This does not replace the existing hardware fault/interlock paths. Immediate DUT safety remains hardware-controlled; the hold-up mechanism exists to preserve Bison state and storage integrity after its own input power is removed.
+
+Implementation must determine:
+
+- required hold-up time;
+- capacitor/supercapacitor value and ESR;
+- brownout/power-fail detection threshold;
+- which internal rails remain powered during shutdown;
+- SD-card worst-case flush/close timing;
+- whether external SDRAM contents must be partially or fully drained;
+- repeated power-cycle behavior;
+- startup handling of an interrupted/incomplete run.
+
+The controlled-shutdown budget should be derived from measured worst-case firmware and SD-card behavior rather than from nominal filesystem timings.
+
+
 ## Deferred decisions
 
 The following are intentionally left open:
