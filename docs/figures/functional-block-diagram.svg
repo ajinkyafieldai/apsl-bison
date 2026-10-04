@@ -51,7 +51,7 @@ text{font-family:Arial,Helvetica,sans-serif;fill:#132238}
 <rect x="1030" y="925" width="290" height="105" rx="6" class="box"/><text x="1045" y="955" class="h">PROTOCOL TRANSCEIVERS</text><text x="1045" y="980" class="small">DUT physical-layer interfaces</text><text x="1045" y="1002" class="small">Safe disabled state</text>
 <rect x="1350" y="925" width="210" height="105" rx="6" class="box"/><text x="1365" y="955" class="h">CONTACT EMULATION</text><text x="1365" y="980" class="small">Floating two-pin contacts</text><text x="1365" y="1002" class="small">Defaults open</text>
 
-<rect x="390" y="1060" width="700" height="100" rx="6" class="box"/><text x="405" y="1090" class="h">DUT / FIXTURE DB25</text><text x="405" y="1115" class="small">Female DB25 port(s) · exact count deferred</text><text x="405" y="1137" class="small">IDC ribbon is a fixture choice · wizard defines mapping/profile</text>
+<rect x="390" y="1060" width="700" height="100" rx="6" class="box"/><text x="405" y="1090" class="h">DUT / FIXTURE DB25</text><text x="405" y="1115" class="small">Four female DB25s · 50 GND + 50 signal contacts</text><text x="405" y="1137" class="small">IDC ribbon is a fixture choice · wizard defines mapping/profile</text>
 <rect x="1120" y="1060" width="440" height="100" rx="6" class="box"/><text x="1135" y="1090" class="h">FIXTURE INTERLOCK</text><text x="1135" y="1115" class="small">Dedicated DB25 pin</text><text x="1135" y="1137" class="small">Enable / disable in firmware</text>
 
 <path d="M335 785 H500 M335 880 H500 M335 985 H500 M335 1090 H500" class="ctl"/>
