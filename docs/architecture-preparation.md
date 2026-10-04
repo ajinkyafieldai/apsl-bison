@@ -57,7 +57,9 @@ These are functional boundaries, not final schematic sheet or physical board ass
 | DUT analog measurement | Protected conditioning and acquisition supporting a mix of single-ended and differential measurements. Final analog topology and allocation are deferred. |
 | DUT protocol transceivers | Existing protocol-specific physical layers, notably isolated CAN with controllable termination. Do not add RS-232/RS-485 as baseline requirements. |
 | DUT contact emulation | Floating two-terminal normally-open contacts, default open with hardware override. Existing PhotoMOS/relay selection remains deferred. |
-| Controller RA6M3 | DUT profiles, sequencing, interface control, acquisition, infra Ethernet, service USB, front panel, fan control and reporting. Includes clock/reset/debug. |
+| Controller RA6M3 | DUT profiles, sequencing, interface control, acquisition, infra Ethernet, service USB, front panel, fan control, storage orchestration and reporting. Includes clock/reset/debug. |
+| Internal removable storage | Internal SD or microSD card for active recipe/assets, run logs/results, requested captures, deferred host/CI synchronization, staged runtime/update bundles and rollback data. Retention is time-based; unsynchronized/current data remains pinned. |
+| External SDRAM (probable) | Non-safety-critical burst/capture/log buffering and write coalescing between real-time acquisition and Ethernet/SD storage. Final requirement and capacity are deferred to bandwidth/resource analysis. |
 | Infra Ethernet | PHY, magnetics and connector protection connected to the MCU Ethernet interface. |
 | Service USB device | USB-C configuration, protection, data path and VBUS sensing to the MCU USB peripheral. |
 | Front-panel controls/status | Plain momentary anti-vandal input, RESET pinhole, and READY / ACTIVE / FAULT LED outputs using the established accessible animation vocabulary. |
@@ -74,7 +76,9 @@ The existing fixture interlock remains mandatory. Its safe-state function must b
 
 ![Bison functional blocks](figures/functional-block-diagram.png)
 
-The drawings summarize the walkthrough. The dedicated fixture interlock is preserved by this record and its existing contract even though the overview does not show it explicitly.
+**Regeneration note:** these overview PNGs predate the latest DB25 fixture-interface, accessible front-panel UI, rear USB-C, revised DUT-power-output, reverse-polarity precheck, and internal SD/microSD storage decisions. They remain historical architecture references until regenerated and must not override the textual contracts in this document.
+
+The dedicated fixture interlock remains part of the architecture even when omitted from a simplified overview.
 
 ## Power and measurement architecture
 
@@ -177,6 +181,72 @@ During block design, verify:
 
 A few-milliamp trip threshold does not constrain peak fault current. A fast cutoff is insufficient if stored energy continues the fault. Soft-start may catch an error earlier, but that depends on DUT internals and must not replace full-voltage protection verification.
 
+
+## Local storage and buffering architecture
+
+Bison includes internal removable flash storage, with SD or microSD as the current preferred implementation.
+
+This is appliance storage, not a customer-supplied removable-media workflow. It exists so Bison can continue and remain auditable when the host or network is unavailable.
+
+The card stores at least:
+
+- currently loaded recipe and required assets;
+- run event logs;
+- final structured run results;
+- requested captures/waveforms;
+- pending host/CI synchronization;
+- staged runtime/update bundles;
+- current runtime bundle;
+- previous known-good rollback bundle where practical.
+
+Retention is time-based rather than a small fixed run count.
+
+Pinned classes include:
+
+- active recipe/runtime;
+- current run;
+- completed but unsynchronized runs;
+- staged candidate update until promoted/discarded;
+- rollback runtime according to update policy.
+
+A network outage must not invalidate a test that Bison can safely complete locally. Bison may finish the run, preserve original identifiers/timestamps, and synchronize later.
+
+### Buffering hierarchy
+
+The current expected hierarchy is:
+
+```text
+RA6M3 internal SRAM
+    |
+    v
+probable external SDRAM
+    |
+    +--> Ethernet / host streaming
+    |
+    v
+internal SD/microSD
+```
+
+Internal SRAM owns control/runtime state, DMA descriptors and low-latency queues.
+
+External SDRAM is probable rather than frozen. Its purpose is burst/sample buffering, waveform/protocol capture buffering, and log/event coalescing so SD or network latency does not disturb deterministic control. Safety-critical state must not depend solely on external SDRAM.
+
+### Controlled shutdown
+
+Bison should provide enough hold-up energy to detect loss of its own operating power and preserve storage integrity.
+
+On Bison power loss:
+
+1. immediate DUT safety remains owned by the hardware fault/interlock path;
+2. firmware stops accepting new work;
+3. the active run record is closed or checkpointed;
+4. critical buffered data and filesystem metadata are flushed to SD;
+5. interrupted work is marked appropriately;
+6. Bison shuts down before the hold-up rail collapses.
+
+Hold-up time, capacitor/supercapacitor sizing, powered rails and filesystem strategy remain implementation decisions.
+
+
 ## Discharge and thermal intent
 
 Use a switched bleed resistor bank. Main-switch and bleed-switch controls are complementary with dead time: main OFF first, then bleed ON; bleed OFF before main ON. Hardware faults use the same cutoff/discharge interlock.
@@ -201,6 +271,9 @@ Keep open for the implementation phase:
 - bleed resistance/count and allowed repeated cycling;
 - analog single-ended/differential implementation and voltage/common-mode envelope;
 - thermal sensor placement/thresholds, fan parts and thermal checks;
+- SD/microSD interface implementation, filesystem and retention details;
+- external SDRAM requirement/capacity from worst-case capture bandwidth;
+- power-fail detection and hold-up-energy sizing for controlled shutdown;
 - grounding, PE/chassis and signal-return bonding;
 - fixture and power-up/down sequencing verification;
 - compliance planning and fault-validation evidence.
