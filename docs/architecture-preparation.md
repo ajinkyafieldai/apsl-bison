@@ -23,9 +23,23 @@ For matters changed today, this record and the updated [power architecture](powe
 | DUT POWER OUT | 2-position 5.08 mm pluggable screw-terminal system with orange/black visual treatment and explicit + / − markings. |
 | Infra Ethernet | Supported host/network interface for control, data, rack integration and PTP-based synchronization. |
 | Service USB device | Rear USB-C; Bison is the client/device. Service only pending customer-facing VID/PID allocation. Preserve the existing service USB contract. |
-| DUT / fixture DB25 | Female DB25 fixture ports carrying fixed-function channels and the dedicated fixture interlock. Exact port count is deferred; four is the current upper-bound packaging estimate. IDC ribbon is a downstream fixture option, not the Bison connector contract. |
+| DUT / fixture DB25 | Four female DB25 fixture ports carrying fixed-function channels and the dedicated fixture interlock. The 100 physical contacts are budgeted as 50 GND + 50 functional signal contacts using the recurring GND-SIG-SIG-GND conductor discipline. IDC ribbon is a downstream fixture option, not the Bison connector contract. |
 | Front-panel control | Plain black momentary anti-vandal pushbutton plus labelled READY / ACTIVE / FAULT LEDs and RESET pinhole. Preserve the accessible animation and arrow vocabulary. |
 | Cooling provisions | Cooling is empirical. Provide room for one or two square fans if testing requires them; 40 mm and 20 mm classes are current candidates. |
+
+
+### DB25 contact budget
+
+Bison V1 uses four 25-contact fixture connectors, for **100 physical DB25 contacts** total.
+
+The connector fabric reserves these as:
+
+- **50 GND contacts**;
+- **50 functional DUT/fixture signal contacts**.
+
+The recurring wiring discipline is `GND-SIG-SIG-GND`. Because each individual DB25 has an odd 25 contacts, the exact pattern phase may alternate between connectors; the four-port aggregate remains 50/50. For IDC-style mating, the pattern is defined in ribbon-conductor order rather than naive D-sub numeric pin order.
+
+The 50 external signal contacts are not assumed to consume exactly 50 RA6M3 pins. Interface electronics may change the MCU-resource ratio; this is resolved in the peripheral/pin budget.
 
 ### DUT voltage variants
 
@@ -66,7 +80,7 @@ These are functional boundaries, not final schematic sheet or physical board ass
 | Fan control | Optional fan support sized after experiment. Architecture should allow one or two square fans; exact 40 mm / 20 mm selection, PWM and tach requirements remain open. |
 | Temperature monitor | I2C readings/configuration and open-drain overtemperature alerts wired onto the hardware fault line. |
 | Hardware fault interlock | Wired-OR fault inputs and shared latched shutdown. Overrides DUT power and driver enables; MCU receives fault status. |
-| DUT / fixture DB25 ports | Collect fixed-function DUT interfaces and the dedicated fixture interlock; main DUT power remains on separate connectors. Exact number of ports is deferred. |
+| DUT / fixture DB25 ports | Four ports collect fixed-function DUT interfaces and the dedicated fixture interlock; main DUT power remains on separate connectors. Connector budget is 50 GND contacts + 50 functional signal contacts. |
 
 The existing fixture interlock remains mandatory. Its safe-state function must be shown in the eventual schematic and resource allocation even though it was not explicitly drawn in the walkthrough overview.
 
@@ -265,7 +279,7 @@ Keep open for the implementation phase:
 
 - exact current rating and voltage-boundary tolerances;
 - RA6M3 package, peripheral/DMA/timer/ADC budget, pin allocation and channel counts;
-- DB25 port count, connector MPN and pin allocation;
+- DB25 connector MPN and final numbered pin allocation within the frozen four-port / 50-signal budget;
 - power-board/control-board connector and physical partition details;
 - actual power FETs, soft-start controller, shunts, detectors, thresholds and clamp sinks;
 - bleed resistance/count and allowed repeated cycling;
