@@ -72,11 +72,11 @@ The existing fixture interlock remains mandatory. Its safe-state function must b
 
 ## Architecture overview drawings
 
-![Bison external interfaces](figures/external-interfaces.png)
+![Bison external interfaces](figures/external-interfaces.svg)
 
-![Bison functional blocks](figures/functional-block-diagram.png)
+![Bison functional blocks](figures/functional-block-diagram.svg)
 
-**Regeneration note:** these overview PNGs predate the latest DB25 fixture-interface, accessible front-panel UI, rear USB-C, revised DUT-power-output, reverse-polarity precheck, and internal SD/microSD storage decisions. They remain historical architecture references until regenerated and must not override the textual contracts in this document.
+The synchronized figures reflect the current interface, storage, protection and UI architecture. They are functional documentation, not product mockups or schematics.
 
 The dedicated fixture interlock remains part of the architecture even when omitted from a simplified overview.
 
