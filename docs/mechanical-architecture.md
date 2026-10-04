@@ -292,9 +292,7 @@ Still to be determined:
 - exact AC/DC supply and mounting pattern;
 - exact IEC inlet / switch / fuse / filter arrangement;
 - rear-panel connector set;
-- final front-panel connector layout;
-- exact card-edge connector family;
-- gold-finger pitch and contact count;
+- final front-panel DB25 count and connector layout;
 - exact cylindrical stop geometry;
 - exact front/rear panel thickness;
 - optional rack bracket / tray design;
@@ -312,16 +310,16 @@ Current decisions/directions:
 - allow a taller Virtus-style enclosure as a Rev A fallback if necessary;
 - use removable rubber feet for benchtop use;
 - use an optional 1U rack bracket/tray;
-- use a PCB front panel;
+- use the enclosure's aluminum front plate, machined for the interfaces and silk-screened for legends/branding;
+- do not use a front-panel PCB or card-edge interconnect;
 - use an aluminum rear panel;
-- use a vertical card-edge connector on the front PCB mating with main-board gold fingers;
 - constrain the main PCB in Z with extrusion guides;
 - use a single rear cylindrical stop to prevent further rearward PCB travel;
 - do not screw the production main PCB to the stop;
 - provide four PCB holes only for bench-test standoffs;
 - mount the chassis AC/DC supply independently using its specified mounting points;
 - use countersunk chassis fasteners where a flush bottom is required;
-- install the front-panel PCB last in the assembly sequence.
+- install the machined/silk-screened aluminum front plate as part of final enclosure assembly.
 
 ## 12. Preparation update on 3 October 2026
 
@@ -329,7 +327,7 @@ The operating supply is an off-the-shelf isolated AC/DC module providing 12 V to
 
 Reserve space for two optional rear 40 mm fans and two front intake slots, above and below the main board. Fan power is 12 V directly, with one shared PWM command and separate tach inputs. I2C thermal monitoring feeds the hardware fault line.
 
-DUT POWER IN is a polarity-marked barrel jack. DUT POWER OUT uses orange positive and black return screw terminals with explicit polarity legends. These connector types supersede earlier provisional terminal descriptions; panel placement still follows the final mechanical layout.
+DUT POWER IN is a polarity-marked barrel jack. DUT POWER OUT uses a 2-position 5.08 mm pluggable screw-terminal system with orange/black visual treatment and explicit polarity legends. These connector types supersede earlier provisional terminal descriptions; panel placement still follows the final mechanical layout.
 
-Final fan/enclosure geometry must be reconciled with the existing 1U height target; reserving 40 mm fan mounts does not prove fit in the earlier 30–35 mm reference body. Preserve the Rev A height fallback. See [architecture preparation](architecture-preparation.md).
+Cooling provisions must be validated experimentally against the selected enclosure and 1U target. One or two 40 mm or 20 mm square fans may be added if testing shows they are required; do not freeze fan count or size from packaging sketches alone. See [architecture preparation](architecture-preparation.md).
 
