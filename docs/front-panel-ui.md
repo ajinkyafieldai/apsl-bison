@@ -4,7 +4,7 @@
 
 This document freezes the current Bison front-panel UI/UX architecture.
 
-The goal is a minimal physical interface that communicates Bison/DUT execution state clearly without duplicating information that belongs in the web UI.
+The goal is a minimal physical interface that communicates Bison/DUT execution state clearly without duplicating information that belongs in the web UI, while remaining understandable without relying on color alone.
 
 ---
 
@@ -14,33 +14,33 @@ Bison is networked test equipment.
 
 The physical front panel should answer only the questions that matter when standing in front of the unit:
 
-- Is Bison booting, idle, transitioning, running, or faulted?
-- Is DUT power available?
-- Is the DUT currently energized / under test?
+- Is Bison ready, transitioning, running, or faulted?
+- Is Bison moving toward ACTIVE or back toward READY?
 - Has Bison detected a hardware/infrastructure fault?
 
 Detailed configuration, diagnostics, logs, and DUT pass/fail results belong in the web UI.
 
-The front panel should not attempt to become a miniature test-results dashboard.
+The front panel should not become a miniature test-results dashboard.
 
 ---
 
-## 2. Human controls
+## 2. Human controls and indicators
 
 The physical UI is intentionally minimal:
 
-- one RGB illuminated anti-vandal momentary pushbutton;
-- one recessed RESET pinhole.
+- one plain black momentary anti-vandal pushbutton;
+- one recessed RESET pinhole;
+- three labelled status LEDs: READY, ACTIVE, FAULT.
 
-No additional normal-operation buttons are currently required.
+The anti-vandal button is not itself the primary state indicator.
 
-The state machine is sufficiently linear that one momentary control is enough.
+The separate labelled LEDs were chosen so state can be understood from position, label, and animation direction rather than color alone.
 
 ---
 
 ## 3. Anti-vandal button
 
-The anti-vandal switch is fully software-controlled.
+The anti-vandal switch is software-controlled.
 
 It does not directly switch DUT power.
 
@@ -48,99 +48,95 @@ A press is interpreted as a request to transition the DUT execution state.
 
 ### 3.1 Button behavior by state
 
-- In **Idle — No DUT Power**, button presses have no effect.
-- In **Idle — DUT Power Available**, a press requests ARM / RUN.
-- In **Arming**, further presses are ignored until the transition completes.
+- In **Pre-operational / no valid DUT power**, button presses have no effect.
+- In **Ready**, a press requests START.
+- During **Starting**, further presses are ignored until the transition completes.
 - In **Running**, a press requests STOP.
-- In **Stopping**, further presses are ignored until the transition completes.
-- In **Fault**, recovery semantics are intentionally not overloaded onto the button unless a future requirement explicitly needs it.
+- During **Stopping**, further presses are ignored until the transition completes.
+- In **Fault**, recovery semantics are not overloaded onto the normal start/stop action; fault reset follows the defined recovery path.
 
 The button therefore behaves as:
 
-> request the next valid state transition.
+> request the next valid operator transition.
 
 The current Bison state determines what the press means.
 
 ---
 
-## 4. State machine
+## 4. Operator-visible state vocabulary
 
-The frozen front-panel-visible Bison states are:
+The front-panel vocabulary is intentionally compact:
 
-1. Booting
-2. Bison Idle — No DUT Power
-3. Bison Idle — DUT Power Available
-4. Arming
-5. Running
-6. Fault
-7. Stopping
+- READY
+- ACTIVE
+- FAULT
 
-Nominal flow:
+The underlying firmware may have more detailed internal states, but the front panel communicates them through these three labelled indicators and their animations.
+
+The simplified operator-facing flow is:
 
 ```
-BOOTING
-   |
-   v
-IDLE_NO_POWER
-   |
-   | DUT power becomes valid
-   v
-IDLE_POWER
-   |
-   | button press
-   v
-ARMING
-   |
-   | success
-   v
-RUNNING
-   |
-   | button press
-   v
-STOPPING
-   |
-   v
-IDLE_POWER
+READY <-> ACTIVE
+          |
+          v
+        FAULT
+          |
+          v
+        READY
 ```
 
-If DUT power disappears while idle, the state returns to `IDLE_NO_POWER`.
+The arrows on the front panel are intentional:
 
-Faults may be entered asynchronously from relevant states.
+- opposing half-arrows between READY and ACTIVE show that the transition is bidirectional;
+- motion from READY toward ACTIVE means starting;
+- motion from ACTIVE toward READY means stopping;
+- ACTIVE -> FAULT indicates that a running/active system may enter fault;
+- FAULT -> READY indicates successful fault reset returns to the safe ready state.
+
+This is an operator-facing simplification, not the exhaustive firmware transition graph.
 
 ---
 
-## 5. RGB indication language
+## 5. LED indication and animation language
 
-The anti-vandal RGB illumination is the primary front-panel state indicator.
-
-### 5.1 State mapping
-
-| State | RGB behavior |
+| State | Indication |
 | --- | --- |
-| Booting | Cycle through all colors |
-| Bison Idle — No DUT Power | Green breathing |
-| Bison Idle — DUT Power Available | Green solid |
-| Arming | Amber breathing |
-| Running | Red solid |
-| Fault | Red blink pattern |
-| Stopping | Amber blinking |
+| Booting | LEDs cycle in sequence |
+| Pre-operational | READY: green sinusoidal breathing |
+| Idle / Ready | READY: steady green |
+| Starting | Brightness sweeps from READY to ACTIVE |
+| Running | ACTIVE: steady red |
+| Stopping | Brightness sweeps from ACTIVE to READY |
+| Error | FAULT: red blinking, with product-specific quick-reference error pattern |
+| Resetting error | FAULT: red sinusoidal breathing; successful reset returns to READY |
 
-### 5.2 Semantic language
+Starting uses a directional sweep across READY and ACTIVE so the animation itself communicates motion toward the active state.
 
-The indication language is deliberately small:
+Stopping reverses the sweep.
 
-- **Green** = idle / safe state
-- **Amber** = transition in progress
-- **Red** = DUT energized or Bison fault
-- **Animation** distinguishes stable, transitional, and fault states
-
-Booting is intentionally unique and cycles through colors.
+The exact PWM levels and timing are tuned on hardware. ACTIVE must support the transition color behavior and steady red running state required by the product vocabulary.
 
 ---
 
-## 6. Fault indication
+## 6. Accessibility rule
 
-Fault indication is for quick physical triage only.
+The front panel must not require color discrimination to interpret the primary state.
+
+State is communicated redundantly through:
+
+- labelled LED position;
+- which indicator is active;
+- animation type;
+- animation direction;
+- front-panel arrows.
+
+Color is supplementary.
+
+---
+
+## 7. Fault indication
+
+FAULT indication is for quick physical triage only.
 
 A fault is a Bison / fixture / electrical / infrastructure fault, for example:
 
@@ -150,15 +146,15 @@ A fault is a Bison / fixture / electrical / infrastructure fault, for example:
 - fixture interlock fault;
 - Bison internal hardware fault.
 
-The red blink pattern may encode a small fault class vocabulary.
+The red blink pattern may encode a small fault-class vocabulary.
 
-The exact blink vocabulary is not frozen here.
+The exact fault-code mapping may be finalized later.
 
-The detailed cause, measurements, timestamps, and recovery information belong in the web UI / API / logs.
+Detailed cause, measurements, timestamps, and recovery information belong in the web UI / API / logs.
 
 ---
 
-## 7. DUT test result is not a Bison fault
+## 8. DUT test result is not a Bison fault
 
 A critical UI rule is:
 
@@ -166,31 +162,29 @@ A critical UI rule is:
 
 A perfectly healthy Bison may complete a test in which the DUT fails.
 
-The DUT test verdict is carried through the fixture/ribbon interface and is displayed and recorded by the web UI / test workflow.
+The DUT test verdict is carried through the fixture interface and is displayed and recorded by the web UI / test workflow.
 
-The anti-vandal LED must not be repurposed later to show production PASS/FAIL.
+The READY / ACTIVE / FAULT indicators must not be repurposed to show production PASS/FAIL.
 
-Red fault indication means Bison or fixture infrastructure had a fault, not that the DUT failed its functional test.
+FAULT means Bison or fixture infrastructure had a fault, not that the DUT failed its functional test.
 
 ---
 
-## 8. RESET pinhole
+## 9. RESET pinhole
 
-The front panel includes one recessed pinhole labeled:
+The front panel includes one recessed pinhole labelled:
 
 `RESET`
 
 It follows the conventional networking-equipment / Wi-Fi-router interaction model.
 
-RESET is for factory reset / network recovery, not for ordinary reboot.
+RESET is for factory reset / network recovery, not ordinary start/stop operation.
 
 The implementation should use a long-hold action so an accidental short press does not erase configuration.
 
-No custom terminology should be invented for this feature.
-
 ---
 
-## 9. Hard power vs DUT run control
+## 10. Hard power vs DUT run control
 
 Bison has two distinct power concepts.
 
@@ -198,124 +192,114 @@ Bison has two distinct power concepts.
 
 The rear IEC power-entry module owns hard mains power.
 
-It includes the hard AC power switch and associated fuse/filtering as selected during electrical design.
-
 When rear mains power is OFF:
 
 - Bison is truly off;
 - Ethernet is down;
-- the front RGB button is unpowered.
+- the front indicators are unpowered.
 
-### Front anti-vandal control
+### Front operator control
 
-The front anti-vandal switch controls the DUT execution state only.
+The front anti-vandal button controls the DUT execution state only.
 
 Bison itself remains powered, booted, and network-connected while the DUT is idle.
 
-This is intentionally similar to an appliance that remains network-connected while its controlled load is not active.
-
 ---
 
-## 10. Ethernet indication
+## 11. Ethernet indication
 
 Ethernet link/activity indication should remain on the RJ45 connector where possible.
 
 Do not duplicate link/activity with separate front-panel LEDs unless a concrete requirement emerges.
 
+A black visible RJ45 housing/bezel is preferred where practical, without compromising shield/chassis bonding.
+
 ---
 
-## 11. Front-panel connector set
+## 12. Front-panel connector set
 
-The front panel is now frozen to the following user-facing elements:
+The front panel is frozen to the following user-facing elements:
 
 - Ethernet;
-- DUT / fixture connector;
-- RGB anti-vandal momentary pushbutton;
+- DUT / fixture DB25 ports;
+- plain black momentary anti-vandal pushbutton;
+- READY / ACTIVE / FAULT status LEDs;
 - recessed RESET pinhole;
-- DUT-power barrel jack.
+- DUT POWER IN barrel jack;
+- DUT POWER OUT 2-position 5.08 mm pluggable screw-terminal system.
 
-No other front-panel connector or indicator is part of the frozen baseline.
+The exact number of DB25 ports is not frozen. Four ports are the current upper-bound packaging estimate for enclosure sizing.
 
-USB-C remains a service/debug interface concept but is not part of the frozen front-panel connector set.
+DB25 is the Bison-side fixture connector. What cable technology the customer uses downstream is a fixture choice; IDC ribbon is one valid option, not a Bison contract.
 
-The DUT/fixture signal connector is part of the frozen front-panel set.
-
-### 11.1 DUT-power input
+### 12.1 DUT-power input
 
 The front barrel jack is the dedicated DUT-power input.
 
 Its presence is intentionally separate from Bison's own mains power entry.
 
-The anti-vandal state machine uses DUT-power availability as an input:
-
-- no valid DUT power -> Idle — No DUT Power;
-- valid DUT power present -> Idle — DUT Power Available.
-
 The barrel jack is an input to Bison's controlled DUT-power path; it does not directly energize the DUT.
 
-### 11.2 DUT-power output
+### 12.2 DUT-power output
 
 The controlled DUT-power output uses a 2-position, 5.08 mm pluggable screw-terminal system.
 
-The preferred visual treatment is an orange/black connector combination so the controlled DUT-power output is immediately distinct from the DUT-power input barrel jack and the signal connectors.
+The preferred visual treatment is orange + black.
 
 The front-panel marking must clearly identify the output as `DUT POWER OUT` and mark `+` and `-` polarity adjacent to the two positions.
 
-The exact mating/header color split and final manufacturer part numbers may be frozen during detailed mechanical/component selection, but the pluggable 2-position orange/black architecture is now the baseline.
+The exact final manufacturer part numbers may be frozen during detailed component selection.
 
-### 11.3 Reverse-polarity protection — open electrical design item
+### 12.3 Reverse-polarity protection
 
 Connector selection does not eliminate polarity-reversal faults because the customer constructs the fixture cable.
 
-The DUT power-stage design must therefore explicitly protect against both of the following:
+The DUT power architecture must explicitly handle:
 
-1. **Reversed DUT-power input** at the barrel jack.
-2. **Reversed DUT-power output wiring** caused by a customer cable or fixture that swaps DUT `+` and `-`.
+1. reversed DUT POWER IN at the barrel jack;
+2. reversed DUT POWER OUT wiring caused by a customer cable/fixture.
 
-The final protection topology is not frozen here.
+The pre-power check now includes reverse-polarity validation before full-power enable.
 
-The requirement is that these cases are treated as intentional fault scenarios during DUT power-stage design, including preventing destructive back-power paths through Bison sensing, signal-ground, clamp, translator, or other interface circuitry.
+This check is an additional preventive layer; Bison survival remains the hard requirement if incorrect wiring escapes the precheck.
 
----
+The final protection circuit must prevent destructive back-power paths through Bison sensing, signal-ground, clamp, translator, or other interface circuitry.
 
-## 12. Front-panel PCB implication
-
-The UI is deliberately sparse.
-
-Whether a dedicated front-panel PCB remains worthwhile should be decided mechanically rather than because the UI requires one.
-
-If a separate front PCB is retained, it may still be useful for:
-
-- anti-vandal wiring/control;
-- RESET switch;
-- front connector alignment;
-- legends / branding;
-- chassis / connector-shield bonding;
-- clean card-edge interconnect to the main board.
-
-If these do not justify a separate PCB, the main board may extend to the front and use a passive panel instead.
-
-The UI architecture itself does not require a separate front-panel PCB.
+DUT survival is not guaranteed.
 
 ---
 
-## 13. Frozen UI requirements
+## 13. Rear service interface
 
-The following are now frozen as the Bison front-panel UI baseline:
+USB-C remains a service/debug interface and is placed on the rear panel.
 
-- one RGB illuminated anti-vandal momentary button;
-- one recessed RESET pinhole;
-- no separate READY, DUT, PWR, or FAULT LEDs;
-- Ethernet and the DUT/fixture connector are the two primary front-panel interfaces;
-- DUT power enters through a dedicated front-panel barrel jack;
-- Ethernet link/activity remains on the RJ45;
-- the anti-vandal button is software-controlled and does not directly switch power;
-- button presses request the next valid DUT execution-state transition;
-- seven visible states: Booting, Idle-No-Power, Idle-Power, Arming, Running, Fault, Stopping;
-- RGB state mapping as defined above;
-- front-panel fault indication is infrastructure fault triage only;
-- DUT functional PASS/FAIL is carried through the fixture interface and shown in the web UI;
+Ethernet remains the supported customer-facing host interface.
+
+---
+
+## 14. Front-panel construction
+
+There is no front-panel PCB.
+
+Use the aluminum front plate supplied with the enclosure, machined for connectors/controls and silk-screened for legends, arrows, polarity, branding, and status labels.
+
+The main PCB and chassis-mounted components should meet the front panel directly as appropriate.
+
+---
+
+## 15. Frozen UI requirements
+
+The current Bison front-panel baseline is:
+
+- plain black momentary anti-vandal button;
+- READY / ACTIVE / FAULT labelled LEDs;
+- color-blind-accessible state communication through labels, position, animation, and directional arrows;
+- recessed RESET pinhole;
+- Ethernet;
+- DB25 DUT/fixture ports, exact count deferred, four used as current size estimate;
+- DUT POWER IN barrel jack;
+- DUT POWER OUT orange/black 2-position 5.08 mm pluggable screw terminal;
+- USB-C service connector on the rear;
+- no separate PASS/FAIL indication for DUT functional test result;
 - rear IEC switch is the hard Bison power switch;
-- front anti-vandal control is for DUT execution only;
-- frozen front-panel physical set is: Ethernet + DUT/fixture connector + RGB anti-vandal + RESET pinhole + DUT-power input barrel jack + DUT-power output 2-position 5.08 mm orange/black pluggable screw terminal;
-- USB-C is not part of the frozen front-panel baseline.
+- aluminum machined and silk-screened front plate, with no front-panel PCB.
