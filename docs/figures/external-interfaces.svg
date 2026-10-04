@@ -66,8 +66,8 @@ text{font-family:Arial,Helvetica,sans-serif;fill:#132238}
 <rect x="1075" y="625" rx="8" ry="8" width="370" height="190" class="box"/>
 <rect x="1075" y="625" width="6" height="190" fill="#64778c"/>
 <text x="1100" y="665" class="h">DUT / FIXTURE INTERFACE</text>
-<text x="1100" y="700" class="b">Female DB25 port(s)</text>
-<text x="1100" y="731" class="b">Exact count not fixed; four is size estimate</text>
+<text x="1100" y="700" class="b">Four female DB25 ports</text>
+<text x="1100" y="731" class="b">100 contacts = 50 GND + 50 signals</text>
 <text x="1100" y="762" class="b">IDC ribbon is a fixture choice</text>
 <text x="1100" y="793" class="b">Dedicated interlock pin</text>
 
