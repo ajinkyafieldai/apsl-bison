@@ -74,16 +74,17 @@ The barrel jack is **DUT POWER IN**, not Bison's housekeeping supply.
 
 ## DUT side
 
-Bison has a **wide ribbon-cable connector** for fixed-function signals, plus separate DUT power connectors:
+Bison exposes one or more female DB25 fixture ports plus separate DUT power connectors:
 
-- **DUT POWER IN:** barrel jack, polarity marked, supplying the external pass-through voltage.
-- **DUT POWER OUT:** orange positive and black return screw terminals, explicitly marked + / −.
+- **DUT POWER IN:** front barrel jack, polarity marked, supplying the external pass-through voltage.
+- **DUT POWER OUT:** front 2-position 5.08 mm pluggable screw-terminal system with orange/black visual treatment and explicit + / − markings.
+- **DUT / fixture:** female DB25 ports carrying fixed-function DUT-facing capabilities and the dedicated fixture interlock.
 
-The agreed voltage variants are 3.3–10 V, 10–36 V and 36–60 V, with the same current rating across variants; the exact few-amp rating remains open.
+The exact DB25 port count is intentionally not frozen yet. Four ports are the current upper-bound packaging estimate used for enclosure sizing.
 
-The ribbon carries the fixed-function DUT-facing capabilities of Bison.
+The Bison contract stops at the DB25. The customer may use IDC ribbon, discrete wiring, direct PCB mating, or another suitable fixture harness downstream.
 
-Its exact signal allocation is intentionally not frozen yet.
+The agreed voltage variants remain 3.3–10 V, 10–36 V and 36–60 V, with the same current rating across variants; the exact few-amp rating remains open.
 
 ## Fixture architecture
 
@@ -151,8 +152,8 @@ See [architecture preparation](architecture-preparation.md) for the functional-b
 
 The following remain open until peripheral and pin budgeting:
 
-- ribbon pin count;
-- ribbon connector family;
+- DB25 port count and final pin allocation;
+- exact DB25 connector MPN and mounting details;
 - exact DUT-facing signal allocation;
 - number of protocol, analog, digital, contact-emulation, and timing-capable channels;
 - exact fixed electrical standard for each protocol/interface;
