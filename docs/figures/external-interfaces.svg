@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1000" viewBox="0 0 1500 1000">
+<style>
+text{font-family:Arial,Helvetica,sans-serif;fill:#132238}
+.title{font-size:42px;font-weight:700}.sub{font-size:22px;fill:#4b596b}
+.h{font-size:24px;font-weight:700}.b{font-size:18px}.mid{font-size:22px;font-weight:700}
+.box{fill:#fff;stroke:#c8d1dc;stroke-width:2}.core{fill:#eef3f8;stroke:#20344d;stroke-width:3}
+.line{stroke:#64778c;stroke-width:3;fill:none}.orange{stroke:#f58220}.accent{fill:#f58220}
+.small{font-size:16px}.rule{stroke:#d8dee7;stroke-width:2}
+</style>
+<rect width="1500" height="1000" fill="#f7f8fa"/>
+<text x="45" y="65" class="title">BISON / EXTERNAL INTERFACES</text>
+<text x="45" y="102" class="sub">Architecture draft · updated after interface sync</text>
+
+<rect x="45" y="170" rx="8" ry="8" width="370" height="145" class="box"/>
+<rect x="45" y="170" width="6" height="145" fill="#64778c"/>
+<text x="70" y="210" class="h">BISON POWER IN</text>
+<text x="70" y="244" class="b">Rear IEC mains inlet</text>
+<text x="70" y="275" class="b">Off-the-shelf isolated AC/DC</text>
+<text x="70" y="306" class="b">12 V supplied to main board</text>
+
+<rect x="45" y="345" rx="8" ry="8" width="370" height="135" class="box"/>
+<rect x="45" y="345" width="6" height="135" fill="#64778c"/>
+<text x="70" y="385" class="h">INFRA ETHERNET</text>
+<text x="70" y="420" class="b">Front RJ45</text>
+<text x="70" y="451" class="b">Server / rack control and data · PTP timing</text>
+
+<rect x="45" y="510" rx="8" ry="8" width="370" height="145" class="box"/>
+<rect x="45" y="510" width="6" height="145" fill="#64778c"/>
+<text x="70" y="550" class="h">SERVICE USB — DEVICE</text>
+<text x="70" y="585" class="b">Rear USB-C · Bison is the client</text>
+<text x="70" y="616" class="b">Service only until VID/PID assigned</text>
+
+<rect x="45" y="685" rx="8" ry="8" width="370" height="155" class="box"/>
+<rect x="45" y="685" width="6" height="155" fill="#64778c"/>
+<text x="70" y="725" class="h">STATUS / CONTROL</text>
+<text x="70" y="760" class="b">Plain black momentary button</text>
+<text x="70" y="791" class="b">READY / ACTIVE / FAULT LEDs</text>
+<text x="70" y="822" class="b">Recessed RESET pinhole</text>
+
+<rect x="505" y="145" rx="18" ry="18" width="470" height="700" class="core"/>
+<text x="740" y="290" text-anchor="middle" class="title">BISON</text>
+<text x="740" y="335" text-anchor="middle" class="sub">DUT helper</text>
+<text x="740" y="410" text-anchor="middle" class="mid">DUT power pass-through</text>
+<text x="740" y="460" text-anchor="middle" class="sub">Voltage variants</text>
+<text x="740" y="505" text-anchor="middle" class="h">3.3–10 V</text>
+<text x="740" y="545" text-anchor="middle" class="h">10–36 V</text>
+<text x="740" y="585" text-anchor="middle" class="h">36–60 V</text>
+<text x="740" y="640" text-anchor="middle" class="b">Same current rating across variants</text>
+<text x="740" y="670" text-anchor="middle" class="b">A few amps; exact rating to be fixed</text>
+<text x="740" y="765" text-anchor="middle" class="b">Operating power independent</text>
+<text x="740" y="795" text-anchor="middle" class="b">of DUT power</text>
+
+<rect x="1075" y="170" rx="8" ry="8" width="370" height="145" class="box"/>
+<rect x="1075" y="170" width="6" height="145" fill="#64778c"/>
+<text x="1100" y="210" class="h">DUT POWER IN</text>
+<text x="1100" y="245" class="b">Barrel jack · polarity marked</text>
+<text x="1100" y="276" class="b">External supply within unit range</text>
+
+<rect x="1075" y="385" rx="8" ry="8" width="370" height="155" fill="#fff" stroke="#f58220" stroke-width="2"/>
+<rect x="1075" y="385" width="6" height="155" class="accent"/>
+<text x="1100" y="425" class="h">DUT POWER OUT</text>
+<text x="1100" y="460" class="b">2-position 5.08 mm pluggable terminal</text>
+<text x="1100" y="491" class="b">Explicit + / −</text>
+<text x="1100" y="522" class="b">Orange positive · black return</text>
+
+<rect x="1075" y="625" rx="8" ry="8" width="370" height="190" class="box"/>
+<rect x="1075" y="625" width="6" height="190" fill="#64778c"/>
+<text x="1100" y="665" class="h">DUT / FIXTURE INTERFACE</text>
+<text x="1100" y="700" class="b">Female DB25 port(s)</text>
+<text x="1100" y="731" class="b">Exact count not fixed; four is size estimate</text>
+<text x="1100" y="762" class="b">IDC ribbon is a fixture choice</text>
+<text x="1100" y="793" class="b">Dedicated interlock pin</text>
+
+<path d="M415 240 H505" class="line"/><polygon points="505,240 491,232 491,248" fill="#64778c"/>
+<path d="M415 412 H505 M505 412 H415" class="line"/>
+<path d="M415 582 H505 M505 582 H415" class="line"/>
+<path d="M415 760 H505 M505 760 H415" class="line"/>
+<path d="M1075 240 H975" class="line"/><polygon points="975,240 989,232 989,248" fill="#64778c"/>
+<path d="M975 462 H1075" class="line orange"/><polygon points="1075,462 1061,454 1061,470" fill="#f58220"/>
+<path d="M975 718 H1075 M1075 718 H975" class="line"/>
+
+<line x1="45" y1="885" x2="1445" y2="885" class="rule"/>
+<text x="45" y="925" class="h">ENCLOSURE / COOLING</text>
+<text x="45" y="960" class="b">Front: machined and silk-screened aluminium plate.</text>
+<text x="555" y="960" class="b">Rear: provision for one or two optional square fans.</text>
+<text x="1050" y="960" class="b">Cooling size TBD · 20 mm / 40 mm candidates.</text>
+</svg>
