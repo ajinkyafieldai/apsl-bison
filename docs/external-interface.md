@@ -60,11 +60,15 @@ During initial development:
 
 During device bring-up and initial firmware-stability sprints, real-time human-readable logging is considered more valuable than a high-throughput DAQ stream.
 
-Once reliable on-board persistent logging exists:
+Bison includes internal removable SD/microSD storage for persistent run data, logs, captures, deferred synchronization and runtime/update bundles.
+
+Once the persistent-storage path is mature:
 
 - CDC0 remains the CLI/control plane.
-- CDC1 becomes a machine-readable high-throughput data plane for DAQ, captures, protocol traces, and bulk telemetry.
-- firmware diagnostic logs move to on-board storage and are retrieved through the CLI when required.
+- CDC1 may become a machine-readable high-throughput data plane for DAQ, captures, protocol traces, and bulk telemetry.
+- firmware diagnostic logs move to the internal SD/microSD and are retrieved through the CLI/web service when required.
+
+The SD/microSD is internal appliance storage and is not part of the external/customer interface contract.
 
 ### Bison operating power
 
