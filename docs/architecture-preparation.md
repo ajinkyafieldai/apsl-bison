@@ -20,12 +20,12 @@ For matters changed today, this record and the updated [power architecture](powe
 |---|---|
 | Bison operating power | Rear IEC mains inlet feeding an off-the-shelf isolated AC/DC module. Main-board operating-power input is 12 V; mains conversion is outside the main board. |
 | DUT POWER IN | Barrel jack, clearly labeled and polarity marked. External DUT supply is passed through rather than generated or regulated by Bison V1. |
-| DUT POWER OUT | Screw terminals: orange positive, black return, with explicit + / − markings. |
+| DUT POWER OUT | 2-position 5.08 mm pluggable screw-terminal system with orange/black visual treatment and explicit + / − markings. |
 | Infra Ethernet | Supported host/network interface for control, data, rack integration and PTP-based synchronization. |
-| Service USB device | USB-C; Bison is the client/device. Service only pending customer-facing VID/PID allocation. Preserve the existing service USB contract. |
-| DUT / fixture ribbon | Fixed-function channels, splittable ribbon, recurring GND–SIG–SIG–GND pattern. Keep functional pairs together. Channel allocation remains deferred. |
-| Front-panel control | One RGB illuminated momentary antivandal switch. Preserve the already-decided button actions and colors. |
-| Cooling provisions | Space for two optional rear 40 mm fans and two front intake slots, above and below the main board. |
+| Service USB device | Rear USB-C; Bison is the client/device. Service only pending customer-facing VID/PID allocation. Preserve the existing service USB contract. |
+| DUT / fixture DB25 | Female DB25 fixture ports carrying fixed-function channels and the dedicated fixture interlock. Exact port count is deferred; four is the current upper-bound packaging estimate. IDC ribbon is a downstream fixture option, not the Bison connector contract. |
+| Front-panel control | Plain black momentary anti-vandal pushbutton plus labelled READY / ACTIVE / FAULT LEDs and RESET pinhole. Preserve the accessible animation and arrow vocabulary. |
+| Cooling provisions | Cooling is empirical. Provide room for one or two square fans if testing requires them; 40 mm and 20 mm classes are current candidates. |
 
 ### DUT voltage variants
 
@@ -60,11 +60,11 @@ These are functional boundaries, not final schematic sheet or physical board ass
 | Controller RA6M3 | DUT profiles, sequencing, interface control, acquisition, infra Ethernet, service USB, front panel, fan control and reporting. Includes clock/reset/debug. |
 | Infra Ethernet | PHY, magnetics and connector protection connected to the MCU Ethernet interface. |
 | Service USB device | USB-C configuration, protection, data path and VBUS sensing to the MCU USB peripheral. |
-| Front-panel RGB button | Momentary input and RGB outputs, using the established UI behavior. |
-| Fan control | Two fans powered directly from 12 V; one common PWM command and two independent tach/sense lines. |
+| Front-panel controls/status | Plain momentary anti-vandal input, RESET pinhole, and READY / ACTIVE / FAULT LED outputs using the established accessible animation vocabulary. |
+| Fan control | Optional fan support sized after experiment. Architecture should allow one or two square fans; exact 40 mm / 20 mm selection, PWM and tach requirements remain open. |
 | Temperature monitor | I2C readings/configuration and open-drain overtemperature alerts wired onto the hardware fault line. |
 | Hardware fault interlock | Wired-OR fault inputs and shared latched shutdown. Overrides DUT power and driver enables; MCU receives fault status. |
-| DUT / fixture ribbon | Collects the fixed-function DUT interfaces and dedicated fixture interlock; main DUT power remains on separate terminals. |
+| DUT / fixture DB25 ports | Collect fixed-function DUT interfaces and the dedicated fixture interlock; main DUT power remains on separate connectors. Exact number of ports is deferred. |
 
 The existing fixture interlock remains mandatory. Its safe-state function must be shown in the eventual schematic and resource allocation even though it was not explicitly drawn in the walkthrough overview.
 
@@ -98,13 +98,17 @@ Lines to output-parallel blocks represent functional connections to output and r
 
 The new-DUT wizard records the response of a known-good, correctly connected DUT to a small current-limited stimulus. Store the stimulus definition, measured response, settling time and acceptance limits in the DUT profile.
 
-This creates the first profile test: **power-rail sanity check**. Repeat the check before full-power enable. A mismatch keeps power off and reports a failed check. This may reveal incorrect connections, shorts or contact issues, but is not universal proof of correct polarity or board identity.
+This creates the first profile test: **power-rail sanity check**. Repeat the check before full-power enable. A mismatch keeps power off and reports a failed check.
+
+The pre-power check now also includes explicit reverse-polarity validation for the DUT power connection. The exact circuit/algorithm remains an implementation item, but full-power enable must be blocked when the check identifies swapped DUT power wiring.
+
+This preventive check does not replace the protection requirement: Bison must still survive reversed DUT wiring if the check is bypassed, defeated, or inconclusive. DUT survival is not guaranteed.
 
 The startup model agreed today is:
 
 1. DUT-facing drivers disabled; contacts open; fixture interlock permits operation.
 2. Main power and bleed off for the pre-power measurement.
-3. Pre-power sanity check passes.
+3. Pre-power sanity check, including reverse-polarity validation, passes.
 4. Main path ramps up with soft-start.
 5. Verify configured voltage checks within the allowed time.
 6. Enable DUT interfaces and proceed with remaining tests.
@@ -113,7 +117,7 @@ Bank rails must be settled and verified as required before their drivers are ena
 
 ### Optional voltage sensing at the DUT
 
-Local monitoring checks voltage at Bison's output. Optional DUT-side sensing uses ribbon ADC channels in differential configuration, assigned in the new-DUT wizard. It does not require a new dedicated external sense connector.
+Local monitoring checks voltage at Bison's output. Optional DUT-side sensing uses DB25-exposed analog channels in differential configuration, assigned in the new-DUT wizard. It does not require a new dedicated external sense connector.
 
 The analog block must support both single-ended and differential measurement. Input ranges, allowable common-mode voltage, scaling and protection must be defined during implementation; a differential channel must not be assumed safe for direct 60 V sensing merely because it can measure a voltage difference. Preserve the existing 0–5 V input contract pending an explicit design update.
 
@@ -128,7 +132,7 @@ If only the two power leads are swapped:
 - The DUT sees negative voltage across its own input.
 - Its signals may rise positive relative to Bison through DUT circuitry.
 
-For 12 V, 48 V or the 60 V family ceiling, this is therefore a possible positive signal fault of the corresponding magnitude. If another ribbon ground still bonds DUT ground to Bison return, the reversed positive power lead creates a short through that conductor. The power OCP and actual return path must cover that case.
+For 12 V, 48 V or the 60 V family ceiling, this is therefore a possible positive signal fault of the corresponding magnitude. If another DB25 ground/reference contact still bonds DUT ground to Bison return, the reversed positive power lead creates a short through that conductor. The power OCP and actual return path must cover that case.
 
 This reversal does not justify extending the negative I/O clamp requirement from roughly −1 V to −5 V. The earlier undershoot protection remains a separate requirement.
 
@@ -181,7 +185,7 @@ Initial capacitance assumption: **470 µF**. At 60 V, stored energy is approxima
 
 Reserve space for a few **2012 imperial SMD resistors**, approximately 5.1 × 3.0 mm each. The discussion supports feasibility, not a selected count, resistance, rating or guaranteed discharge time. Select these against actual pulse curves, repetitive duty, DUT capacitance and required off-voltage. Verify the rail falls below the DUT profile's off threshold before restart.
 
-Reserve rear space for two optional 40 mm fans and front intake slots above and below the main board. Both fans receive internal 12 V, share one PWM command and return independent tach lines. I2C temperature monitors assert open-drain hardware thermal faults. Sensor locations, thresholds and fan duty policies remain implementation work.
+Cooling will be finalized experimentally. Reserve practical rear-panel/chassis provisions for one or two square fans if testing shows they are required; 40 mm and 20 mm classes are current candidates. I2C temperature monitors assert open-drain hardware thermal faults. Sensor locations, thresholds and fan duty policies remain implementation work.
 
 ## Preparation boundary and implementation handoff
 
@@ -191,7 +195,7 @@ Keep open for the implementation phase:
 
 - exact current rating and voltage-boundary tolerances;
 - RA6M3 package, peripheral/DMA/timer/ADC budget, pin allocation and channel counts;
-- ribbon connector family, pin count and pinout;
+- DB25 port count, connector MPN and pin allocation;
 - power-board/control-board connector and physical partition details;
 - actual power FETs, soft-start controller, shunts, detectors, thresholds and clamp sinks;
 - bleed resistance/count and allowed repeated cycling;
