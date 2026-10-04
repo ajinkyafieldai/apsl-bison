@@ -1,3 +1,11 @@
+## 2026-10-04 — Architecture synchronization: storage and external interfaces
+
+Synchronized the preparation architecture with later Bison decisions. Internal removable SD/microSD is the persistent appliance-storage layer for recipe/assets, run logs/results, captures, deferred host/CI synchronization, staged runtime/update bundles and rollback data. External SDRAM remains probable rather than frozen and is intended only for non-safety-critical capture/log buffering and write coalescing.
+
+Network loss does not invalidate a locally executable test: Bison should preserve run identity/timestamps and synchronize later. Controlled shutdown requires power-loss detection and hold-up energy sufficient to flush critical filesystem metadata/state after the independent hardware DUT-safe path has acted.
+
+The existing external-interface and functional-block PNGs predate the latest DB25, accessible front-panel UI, rear service USB-C, revised DUT-power-output, reverse-polarity precheck and storage decisions; regenerate them before using the figures as current architecture references.
+
 # Bison Engineering Log
 
 ## 2026-10-03 — Local storage, SDRAM buffering and controlled shutdown recorded
