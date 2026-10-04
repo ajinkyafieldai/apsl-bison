@@ -10,174 +10,91 @@ The intent is to establish the physical product constraints early enough that en
 
 ## 1. Product form factor
 
-Bison is intended to work in two physical modes:
+Bison V1 is a **true 19-inch 1U rack instrument**.
 
-- benchtop instrument;
-- optional 1U rack-mounted instrument.
+The production mechanical baseline is:
 
-The enclosure itself does not need to occupy a full 19-inch rack width.
+- standard 19-inch rack width / 482.6 mm front-panel format;
+- 1U nominal height / 44.45 mm rack envelope;
+- short-depth chassis, with roughly 250-300 mm as the current planning range;
+- direct rack-ear mounting rather than a separate tray or half-width carrier;
+- optional removable feet for bench use.
 
-The preferred model is:
+The earlier compact desktop-extrusion concept is superseded.
 
-- compact standalone enclosure;
-- removable rubber feet for benchtop use;
-- optional 1U rack bracket / tray;
-- feet removed when the unit is installed in the rack bracket.
-
-### 1.1 Height constraint
+### 1.1 Rack constraint
 
 The hard mechanical target is:
 
-> Bison enclosure body should fit within a 1U rack-height envelope.
+> Bison shall fit a standard 19-inch 1U server/test rack as a native rack-mount instrument.
 
-1U is 44.45 mm nominal.
-
-The preferred enclosure family should therefore target approximately 30-35 mm body height where practical, leaving margin for manufacturing tolerance and rack hardware.
-
-The 1U requirement is a production target. A taller enclosure may be tolerated for an early revision if sourcing blocks progress.
+The chassis, front panel, connector layout, airflow and service access should therefore be designed directly around rack installation rather than treating rack use as an accessory mode.
 
 ---
 
 ## 2. Enclosure construction
 
-The preferred construction is a low-cost commodity extruded aluminum electronics enclosure rather than a custom folded-sheet-metal chassis.
+The preferred construction is a low-cost commodity **1U rack-mount sheet-metal chassis** suitable for instrumentation and test equipment.
 
-Desired enclosure characteristics:
+Desired characteristics:
 
-- aluminum extrusion / U-shell construction;
-- removable front and rear end panels;
-- internal PCB guide slots;
-- black anodized finish where available;
-- inexpensive standard sizes;
-- suitable for custom front/rear panel machining;
-- compatible with an optional rack tray/bracket.
+- standard 19-inch rack ears/front-panel geometry;
+- approximately 44 mm chassis height;
+- short-depth construction where practical;
+- removable top cover;
+- separately machinable or replaceable front/rear panels;
+- straightforward chassis mounting for the isolated AC/DC module;
+- practical internal standoffs or rails for the main PCB;
+- black powder-coated or similar durable finish where available;
+- suitable for local custom cutouts, legends and printing.
 
-### 2.1 Reference family
+The exact supplier and chassis depth remain open. Indian commodity rack-chassis vendors are preferred where they meet the mechanical and electrical requirements.
 
-Yongu-style low-profile extruded aluminum PCB enclosures are the current mechanical reference.
+### 2.1 Superseded enclosure concepts
 
-The preferred reference envelope is:
+The earlier Yongu-style low-profile extrusion, Virtus extrusion fallback, slide-in PCB guide concept, and optional rack-tray strategy are superseded by the native 19-inch 1U chassis decision.
 
-- approximately 30-35 mm high;
-- width and depth chosen around final PCB and PSU requirements;
-- removable end panels;
-- PCB guide grooves;
-- commodity construction.
-
-Indian/local sourcing should be explored using the Yongu profile/dimensions as the reference.
-
-Direct import from Yongu or equivalent Chinese suppliers is acceptable for prototypes and low-volume units.
-
-### 2.2 Rev A fallback
-
-Virtus Fab / similar Indian-stock extruded enclosures remain an acceptable Rev A fallback if low-profile sourcing becomes a schedule blocker.
-
-The main limitation of the currently identified Virtus-style enclosure is height, not construction quality or suitability.
-
-The design should continue against the Yongu-style low-profile constraints unless a concrete sourcing issue requires otherwise.
+They may remain useful historical references but must not constrain the production mechanical design.
 
 ---
 
 ## 3. Main PCB mechanical retention
 
-The main PCB is not intended to be screwed down at multiple mounting points in the production enclosure.
+The native rack chassis removes the earlier requirement to slide the production PCB in extrusion guide rails.
 
-The extrusion and front/rear geometry provide the primary constraints.
+The main PCB may use conventional chassis standoffs, a removable internal tray, or another serviceable mounting scheme selected with the final commodity 1U chassis.
 
-### 3.1 Z constraint
+The production mounting scheme should:
 
-The extrusion PCB guides constrain the main PCB vertically.
+- support the PCB independently of front-panel connectors;
+- avoid excessive connector loading from fixture cable insertion/removal;
+- permit practical assembly and service;
+- preserve intentional chassis/PE bonding;
+- leave the rear AC/DC module mechanically independent.
 
-The board slides into the enclosure through the front opening.
-
-### 3.2 Longitudinal / XY retention
-
-A cylindrical spacer / hard stop is mounted to the chassis floor near the rear edge of the main PCB.
-
-The spacer is not a threaded PCB mounting point.
-
-Its purpose is simply:
-
-> physically prevent the main PCB from sliding farther rearward.
-
-The main PCB therefore slides in from the front until its rear edge contacts the stop.
-
-The front-panel/card-edge assembly captures the front side of the board.
-
-### 3.3 No snap-in support
-
-A snap-in PCB support was considered and rejected because its chassis feature would protrude from the enclosure bottom and interfere with the desired flush-bottom / rack-tray arrangement.
-
-The current direction is:
-
-- countersunk chassis fastener;
-- cylindrical spacer / stop inside the enclosure;
-- no protruding snap feature under the chassis.
-
-### 3.4 Bench-test holes
-
-The main PCB will include four mounting holes.
-
-These holes are:
-
-> for bench testing and development standoffs only.
-
-They are not intended to be used for normal production enclosure mounting.
-
-This keeps bring-up convenient without forcing the product enclosure to depend on four blind standoff locations.
+The existing four PCB holes remain useful for bench-development standoffs, but their production role is no longer constrained by the old extrusion concept.
 
 ---
 
 ## 4. Front panel architecture
 
-The front panel is a PCB.
+The front panel is the rack chassis front panel, not a PCB.
 
-The front-panel PCB provides:
+It is machined/punched for the Bison connectors and controls and carries durable printed or silk-screened legends.
 
-- visible panel graphics / legends;
-- front-facing connectors;
-- LEDs / indicators;
-- any front-panel controls;
-- chassis/connector-shield bonding features where required.
+The front panel carries:
 
-### 4.1 Main-board interconnect
+- six DUT/fixture DB25 connectors as three stacked pairs;
+- infrastructure Ethernet;
+- DUT POWER IN;
+- DUT POWER OUT;
+- operator pushbutton;
+- READY / ACTIVE / FAULT indicators;
+- recessed RESET access.
 
-The preferred interconnect is:
+Front-panel connectors may be PCB-mounted or chassis-mounted as appropriate, but mechanical insertion loads must be carried by the chassis/panel rather than relying on PCB solder joints alone.
 
-> vertical card-edge connector on the front-panel PCB mating with gold fingers on the main PCB.
-
-Conceptually:
-
-```
-front PCB
-|  vertical card-edge connector
-|          ||
-|          ||
-+----------||---- main PCB gold fingers
-```
-
-Benefits:
-
-- no harness or FFC;
-- clean assembly;
-- repeatable alignment;
-- low part count;
-- easy front-panel replacement;
-- main PCB can slide directly into the connector during final assembly.
-
-### 4.2 Gold fingers
-
-The main PCB should use proper card-edge geometry:
-
-- beveled edge;
-- appropriate hard-gold finish for repeated mating;
-- connector keepout;
-- multiple ground contacts;
-- sufficient mating-depth tolerance.
-
-The connector should not be treated as the sole structural support for the main PCB.
-
-Mechanical loads are still carried by the enclosure guides, chassis stop, and front-panel attachment.
+The previous front-panel PCB/card-edge/gold-finger concept is superseded.
 
 ---
 
@@ -242,43 +159,29 @@ Mounting hardware should not accidentally create uncontrolled signal-ground/chas
 
 ## 8. Assembly sequence
 
-The current intended assembly sequence is:
+The exact production assembly sequence depends on the selected 1U commodity chassis, but the intended order is now conventional rack-instrument assembly:
 
-1. Prepare the lower enclosure section.
-2. Install the AC/DC power supply.
-3. Install rear-panel hardware, including IEC mains hardware and DUT power terminal.
-4. Install the aluminum rear panel as allowed by the chosen enclosure geometry.
-5. Install the cylindrical rear stop/spacer for the main PCB.
-6. Slide the main PCB into the extrusion guides from the front until the rear edge contacts the stop.
-7. Wire the AC/DC supply, rear-panel mains hardware, DUT power path, and main PCB.
-8. Perform open-chassis inspection / electrical checks.
-9. Install / slide on the upper U-shell section.
-10. Mate the front-panel PCB card-edge connector to the main-board gold fingers.
-11. Screw the front panel to the enclosure.
+1. prepare the chassis base and front/rear panels;
+2. install PE/chassis bond hardware and mains-entry hardware;
+3. install the isolated AC/DC module independently to the chassis;
+4. install the main PCB and any internal interface/power-board assemblies;
+5. install front-panel and rear-panel connectors/controls;
+6. complete low-voltage and mains wiring with required segregation;
+7. perform open-chassis inspection and electrical checks;
+8. install the top cover;
+9. perform final functional/safety inspection.
 
-The exact order of rear-panel and upper-shell installation may vary with the final Yongu-style enclosure geometry.
-
-The important assembly principles are:
-
-- mains hardware is installed before the visible front PCB;
-- the main PCB slides in without requiring multiple blind standoff alignments;
-- internal wiring remains accessible before enclosure closure;
-- the front-panel PCB is installed last.
+The important principles are serviceability, mechanical support of heavily used connectors, accessible internal wiring before closure, and independent mounting of the mains AC/DC module.
 
 ---
 
 ## 9. Rack integration
 
-Rack mounting should be optional.
+Rack mounting is the primary mechanical mode.
 
-The preferred model is:
+Bison is a native 19-inch 1U instrument with integral rack ears/front-panel mounting.
 
-- Bison remains a standalone compact instrument;
-- an optional 1U tray / bracket accepts the enclosure;
-- rubber feet are removed for rack installation;
-- the rack bracket carries rack-mounting loads rather than requiring the enclosure itself to be full-rack width.
-
-The final enclosure width should preserve the possibility of efficient rack use, but no requirement currently exists to fit two Bison units side-by-side.
+Bench use remains supported by optional removable feet; it is not a separate enclosure architecture.
 
 ---
 
@@ -286,17 +189,14 @@ The final enclosure width should preserve the possibility of efficient rack use,
 
 Still to be determined:
 
-- exact Yongu enclosure family / part size;
-- final width and depth;
-- exact body height within the 1U target;
+- exact 1U chassis supplier / part number;
+- final chassis depth within the short-depth target;
 - exact AC/DC supply and mounting pattern;
 - exact IEC inlet / switch / fuse / filter arrangement;
-- rear-panel connector set;
-- final front-panel DB25 count and connector layout;
-- exact cylindrical stop geometry;
-- exact front/rear panel thickness;
-- optional rack bracket / tray design;
+- exact front/rear panel thickness and manufacturing process;
+- detailed placement and spacing of the three stacked DB25 pairs and other front-panel interfaces;
 - detailed cooling validation, vent dimensions and exact fan placement;
+- final main-PCB / power-board mounting method;
 - final chassis / PE / signal-ground bond details.
 
 ---
@@ -305,21 +205,17 @@ Still to be determined:
 
 Current decisions/directions:
 
-- target a low-profile Yongu-style extruded aluminum enclosure;
-- maintain a production target of 1U-compatible body height;
-- allow a taller Virtus-style enclosure as a Rev A fallback if necessary;
-- use removable rubber feet for benchtop use;
-- use an optional 1U rack bracket/tray;
-- use the enclosure's aluminum front plate, machined for the interfaces and silk-screened for legends/branding;
+- use a **native 19-inch 1U rack chassis**;
+- target a short depth of roughly 250-300 mm unless internal layout proves otherwise;
+- use integral rack ears/front-panel mounting;
+- support bench use with removable feet;
+- use six front DB25s arranged as three stacked pairs;
+- use a machined/punched and printed rack front panel;
 - do not use a front-panel PCB or card-edge interconnect;
-- use an aluminum rear panel;
-- constrain the main PCB in Z with extrusion guides;
-- use a single rear cylindrical stop to prevent further rearward PCB travel;
-- do not screw the production main PCB to the stop;
-- provide four PCB holes only for bench-test standoffs;
 - mount the chassis AC/DC supply independently using its specified mounting points;
-- use countersunk chassis fasteners where a flush bottom is required;
-- install the machined/silk-screened aluminum front plate as part of final enclosure assembly.
+- use conventional serviceable PCB/chassis mounting appropriate to the selected rack chassis;
+- keep IEC mains, service USB-C and cooling on the rear;
+- preserve front Ethernet, DUT power connectors, operator control/status and fixture connectors.
 
 ## 12. Preparation update on 3 October 2026
 
