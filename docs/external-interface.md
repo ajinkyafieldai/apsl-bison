@@ -84,7 +84,7 @@ Bison exposes one or more female DB25 fixture ports plus separate DUT power conn
 - **DUT POWER OUT:** front 2-position 5.08 mm pluggable screw-terminal system with orange/black visual treatment and explicit + / − markings.
 - **DUT / fixture:** female DB25 ports carrying fixed-function DUT-facing capabilities and the dedicated fixture interlock.
 
-The exact DB25 port count is intentionally not frozen yet. Four ports are the current upper-bound packaging estimate used for enclosure sizing.
+Bison V1 uses **four female DB25 fixture ports**. This gives 100 physical DUT/fixture contacts.
 
 The Bison contract stops at the DB25. The customer may use IDC ribbon, discrete wiring, direct PCB mating, or another suitable fixture harness downstream.
 
@@ -119,15 +119,27 @@ Bison defines the electrical function of each conductor position. The fixture de
 
 ## Conductor discipline
 
-The preferred recurring ribbon pattern is:
+The DUT/fixture connector fabric reserves the four DB25s as a 1:1 return/signal budget:
+
+```text
+100 physical DB25 contacts
+= 50 GND contacts
++ 50 functional signal contacts
+```
+
+The recurring conductor discipline is:
 
 ```text
 GND - SIG - SIG - GND
 ```
 
-This provides regular return paths and works naturally for paired signals.
+The intent is regular local return paths and natural support for paired signals. Because each DB25 has 25 contacts, the exact phase of the recurring pattern may alternate between connectors so the complete four-port fabric totals exactly 50 signal and 50 ground contacts.
+
+For IDC-style DB25 cabling, this discipline is defined in **ribbon conductor order**, not by simply walking numeric D-sub pin numbers. The final numbered DB25 pin map will be generated during the RA6M3 peripheral/pin allocation step.
 
 Functional pairs that need to remain together electrically should remain on the same ribbon branch.
+
+The 50 signal contacts are the external connector budget. They do not imply a strict one-DB25-signal-to-one-MCU-pin mapping: isolated CAN, contact emulation, analog front ends, interlock and other protected interface classes may have different MCU resource costs.
 
 ## Connector family preference
 
@@ -138,7 +150,7 @@ The preferred Bison DUT connector family should support both:
 
 This permits both conventional split-ribbon fixtures and compact direct-mating interposers.
 
-Connector family, pitch, and pin count remain open until the RA6M3 resource allocation is understood.
+The connector family and pin count are frozen as four female DB25s. Exact connector MPN, mounting implementation and numbered contact allocation remain implementation decisions.
 
 ## Local control and indication
 
@@ -156,7 +168,7 @@ See [architecture preparation](architecture-preparation.md) for the functional-b
 
 The following remain open until peripheral and pin budgeting:
 
-- DB25 port count and final pin allocation;
+- final numbered DB25 pin allocation;
 - exact DB25 connector MPN and mounting details;
 - exact DUT-facing signal allocation;
 - number of protocol, analog, digital, contact-emulation, and timing-capable channels;
