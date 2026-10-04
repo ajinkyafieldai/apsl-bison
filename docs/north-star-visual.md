@@ -34,10 +34,10 @@ Freeze the following product-language decisions:
 - orange APSL branding/accent;
 - plain black momentary anti-vandal switch body;
 - black Ethernet presentation where practical;
-- four DUT/fixture D-sub ports presented as two stacked pairs;
+- female DUT/fixture DB25 ports; four shown as two stacked pairs as a packaging upper-bound concept, not a frozen port count;
 - recessed RESET control;
 - dedicated DUT power input and controlled DUT power output;
-- restrained front panel with labelled READY, ACTIVE and FAULT LEDs below the button and orange/black DUT-power terminals;
+- restrained front panel with labelled READY, ACTIVE and FAULT LEDs below the button and orange/black pluggable DUT-power-output terminal;
 - accessibility through indicator position, labels and directional animation rather than colour alone;
 - shared APSL branding, typography, controls and status vocabulary across the product family;
 - removable rack ears / rack-mount presentation while remaining usable as a benchtop instrument.
@@ -80,7 +80,7 @@ Silkscreen expresses READY ↔ ACTIVE, ACTIVE → FAULT and FAULT → READY. Thi
 
 The rear render establishes the same enclosure language from the back and provides a scale reference using an ordinary mug and pen.
 
-The rear connector content in the concept render is illustrative only. The electrical and mechanical architecture documents remain authoritative for the actual rear-panel interfaces.
+The rear connector content in the concept render is illustrative only. USB-C service access is intended on the rear. The electrical and mechanical architecture documents remain authoritative for the actual rear-panel interfaces.
 
 ## Rule
 
