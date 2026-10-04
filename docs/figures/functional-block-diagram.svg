@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1250" viewBox="0 0 1600 1250">
+<style>
+text{font-family:Arial,Helvetica,sans-serif;fill:#132238}
+.title{font-size:38px;font-weight:700}.sub{font-size:20px;fill:#4b596b}
+.sec{font-size:22px;font-weight:700}.h{font-size:20px;font-weight:700}.b{font-size:16px}.small{font-size:14px}
+.box{fill:#fff;stroke:#c8d1dc;stroke-width:2}.domain{fill:none;stroke:#d5dde6;stroke-width:2}
+.pwr{stroke:#f58220;stroke-width:3;fill:none}.ctl{stroke:#1b7399;stroke-width:3;fill:none}.flt{stroke:#cf4052;stroke-width:3;fill:none}.sig{stroke:#7b8795;stroke-width:2.5;fill:none}
+</style>
+<rect width="1600" height="1250" fill="#f7f8fa"/>
+<text x="30" y="55" class="title">BISON / FUNCTIONAL BLOCK DIAGRAM</text>
+<text x="30" y="88" class="sub">Architecture intent · synchronized interface, storage, and protection architecture</text>
+
+<rect x="20" y="110" width="1560" height="120" rx="8" class="domain"/>
+<text x="35" y="140" class="sec">OPERATING POWER</text>
+<rect x="35" y="155" width="245" height="55" rx="6" class="box"/><text x="50" y="180" class="h">REAR IEC INLET</text><text x="50" y="202" class="small">Mains input</text>
+<rect x="335" y="155" width="280" height="55" rx="6" class="box"/><text x="350" y="180" class="h">ISOLATED AC/DC</text><text x="350" y="202" class="small">Off-the-shelf module · outside main board</text>
+<rect x="690" y="155" width="360" height="55" rx="6" class="box"/><text x="705" y="180" class="h">BISON POWER</text><text x="705" y="202" class="small">12 V input → internal DC rails</text>
+<path d="M280 182 H335 M615 182 H690" class="pwr"/>
+
+<rect x="20" y="245" width="1560" height="430" rx="8" class="domain"/>
+<text x="35" y="275" class="sec">DUT POWER — INDEPENDENT PASS-THROUGH SUPPLY</text>
+<rect x="35" y="300" width="255" height="95" rx="6" class="box"/><text x="50" y="328" class="h">DUT POWER IN</text><text x="50" y="353" class="small">Barrel jack · polarity marked</text><text x="50" y="374" class="small">3.3–10 / 10–36 / 36–60 V</text>
+<rect x="360" y="300" width="350" height="95" rx="6" class="box"/><text x="375" y="328" class="h">DUT POWER CONTROL</text><text x="375" y="353" class="small">Soft-start MOSFET power path</text><text x="375" y="374" class="small">Hardware OCP + cutoff · main/bleed dead time</text>
+<rect x="1145" y="300" width="385" height="95" rx="6" class="box"/><text x="1160" y="328" class="h">DUT POWER OUT</text><text x="1160" y="353" class="small">2-position 5.08 mm pluggable terminal</text><text x="1160" y="374" class="small">Orange + / black return</text>
+<path d="M290 348 H360 M710 348 H1145" class="pwr"/>
+
+<rect x="35" y="430" width="330" height="125" rx="6" class="box"/><text x="50" y="458" class="h">HARDWARE FAULT INTERLOCK</text><text x="50" y="484" class="small">Wired-OR inputs + shared latch</text><text x="50" y="506" class="small">Power OCP · clamp fault · thermal</text><text x="50" y="528" class="small">Overrides DUT power and interface enables</text>
+<rect x="405" y="430" width="330" height="125" rx="6" class="box"/><text x="420" y="458" class="h">I/O CLAMP RAIL PROTECTION</text><text x="420" y="484" class="small">Dedicated rail sink + current sensing</text><text x="420" y="506" class="small">Comparator → hardware fault</text><text x="420" y="528" class="small">Separate from logic supply</text>
+<rect x="780" y="430" width="300" height="125" rx="6" class="box"/><text x="795" y="458" class="h">DUT POWER MONITOR</text><text x="795" y="484" class="small">Local voltage + supply current</text><text x="795" y="506" class="small">Measurement data → MCU</text>
+<rect x="1120" y="430" width="410" height="125" rx="6" class="box"/><text x="1135" y="458" class="h">DUT PRE-POWER CHECK</text><text x="1135" y="484" class="small">Dedicated low-current stimulus</text><text x="1135" y="506" class="small">Includes reverse-polarity validation</text><text x="1135" y="528" class="small">Main power and bleed OFF</text>
+
+<rect x="1120" y="575" width="410" height="80" rx="6" class="box"/><text x="1135" y="603" class="h">DUT DISCHARGE</text><text x="1135" y="628" class="small">Bleed MOSFET + resistor bank · dead time</text>
+
+<path d="M365 490 H405" class="flt"/><path d="M710 395 V430" class="flt"/><path d="M710 348 V430" class="ctl"/><path d="M1080 492 H1120" class="ctl"/><path d="M1325 395 V430" class="pwr"/>
+
+<rect x="20" y="690" width="1560" height="520" rx="8" class="domain"/>
+<text x="35" y="720" class="sec">INTERFACES / MEASUREMENT / INFRASTRUCTURE</text>
+
+<rect x="500" y="745" width="420" height="145" rx="6" class="box"/><text x="515" y="775" class="h">CONTROLLER — RA6M3</text><text x="515" y="802" class="small">DUT profiles and power sequencing</text><text x="515" y="824" class="small">Interface control / measurement acquisition</text><text x="515" y="846" class="small">Ethernet · service USB · LEDs · button · storage</text><text x="515" y="868" class="small">Clock · reset · programming / debug</text>
+
+<rect x="945" y="745" width="250" height="145" rx="6" class="box"/><text x="960" y="775" class="h">microSD / SD</text><text x="960" y="800" class="small">Recipes / assets</text><text x="960" y="822" class="small">Run logs / results</text><text x="960" y="844" class="small">Captures / waveforms</text><text x="960" y="866" class="small">Updates / rollback</text>
+<rect x="1220" y="745" width="220" height="145" rx="6" class="box"/><text x="1235" y="775" class="h">EXTERNAL SDRAM</text><text x="1235" y="800" class="small">Probable / optional</text><text x="1235" y="822" class="small">Burst capture buffer</text><text x="1235" y="844" class="small">Log buffering</text><text x="1235" y="866" class="small">Write coalescing</text>
+
+<rect x="35" y="745" width="300" height="80" rx="6" class="box"/><text x="50" y="775" class="h">INFRA ETHERNET</text><text x="50" y="801" class="small">Front RJ45 · PHY / magnetics / protection</text>
+<rect x="35" y="840" width="300" height="80" rx="6" class="box"/><text x="50" y="870" class="h">SERVICE USB — DEVICE</text><text x="50" y="896" class="small">Rear USB-C · service only</text>
+<rect x="35" y="935" width="300" height="100" rx="6" class="box"/><text x="50" y="965" class="h">STATUS / CONTROL</text><text x="50" y="990" class="small">Momentary button · READY / ACTIVE / FAULT</text><text x="50" y="1012" class="small">RESET input</text>
+<rect x="35" y="1050" width="300" height="80" rx="6" class="box"/><text x="50" y="1080" class="h">FAN CONTROL</text><text x="50" y="1106" class="small">Optional 1–2 square fans · final size TBD</text>
+
+<rect x="390" y="925" width="290" height="105" rx="6" class="box"/><text x="405" y="955" class="h">DIGITAL INTERFACE</text><text x="405" y="980" class="small">Level translation + signal clamps</text><text x="405" y="1002" class="small">Default disabled · fault override</text>
+<rect x="710" y="925" width="290" height="105" rx="6" class="box"/><text x="725" y="955" class="h">ANALOG MEASUREMENT</text><text x="725" y="980" class="small">Protection · conditioning · ADC</text><text x="725" y="1002" class="small">Single-ended + differential inputs</text>
+<rect x="1030" y="925" width="290" height="105" rx="6" class="box"/><text x="1045" y="955" class="h">PROTOCOL TRANSCEIVERS</text><text x="1045" y="980" class="small">DUT physical-layer interfaces</text><text x="1045" y="1002" class="small">Safe disabled state</text>
+<rect x="1350" y="925" width="210" height="105" rx="6" class="box"/><text x="1365" y="955" class="h">CONTACT EMULATION</text><text x="1365" y="980" class="small">Floating two-pin contacts</text><text x="1365" y="1002" class="small">Defaults open</text>
+
+<rect x="390" y="1060" width="700" height="100" rx="6" class="box"/><text x="405" y="1090" class="h">DUT / FIXTURE DB25</text><text x="405" y="1115" class="small">Female DB25 port(s) · exact count deferred</text><text x="405" y="1137" class="small">IDC ribbon is a fixture choice · wizard defines mapping/profile</text>
+<rect x="1120" y="1060" width="440" height="100" rx="6" class="box"/><text x="1135" y="1090" class="h">FIXTURE INTERLOCK</text><text x="1135" y="1115" class="small">Dedicated DB25 pin</text><text x="1135" y="1137" class="small">Enable / disable in firmware</text>
+
+<path d="M335 785 H500 M335 880 H500 M335 985 H500 M335 1090 H500" class="ctl"/>
+<path d="M920 817 H945 M1195 817 H1220" class="ctl"/>
+<path d="M590 890 V925 M820 890 V925 M1110 890 V925 M1310 890 V925" class="ctl"/>
+<path d="M535 1030 V1060 M855 1030 V1060 M1175 1030 V1060 M1455 1030 V1060" class="sig"/>
+
+<text x="35" y="1198" class="small" fill="#f58220">Orange: power / rail connections</text>
+<text x="335" y="1198" class="small" fill="#1b7399">Blue: MCU control and data</text>
+<text x="620" y="1198" class="small" fill="#cf4052">Red: hardware protection</text>
+<text x="890" y="1198" class="small" fill="#7b8795">Grey: external signal paths</text>
+<text x="1190" y="1198" class="small">Diagram is functional, not a schematic.</text>
+</svg>
