@@ -87,3 +87,10 @@ The rear connector content in the concept render is illustrative only. USB-C ser
 > Use these renders to answer “should Bison look and feel like this?” — not “where exactly should this hole be drilled?”
 
 Any future mechanical refinement should preserve this visual language unless there is a concrete manufacturing, usability, compliance, or thermal reason to depart from it.
+
+
+## Mechanical supersession — 4 October 2026
+
+The visual renders remain useful for APSL color, typography, operator-control language and general product character, but their compact desktop-enclosure geometry is superseded.
+
+Bison V1 is now a **native 19-inch 1U rack instrument**. Future renders should use the rack form factor and six front DB25 fixture ports arranged as three stacked pairs. Do not use the older enclosure proportions as dimensional guidance.
