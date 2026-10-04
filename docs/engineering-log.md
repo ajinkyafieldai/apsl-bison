@@ -1,3 +1,11 @@
+## 2026-10-04 — Native 1U rack chassis supersedes desktop extrusion
+
+Bison V1 is now mechanically defined as a native 19-inch 1U rack instrument rather than a compact extrusion with optional rack tray. The production direction is a short-depth commodity rack chassis, roughly 250-300 mm deep unless internal layout requires otherwise. Bench use remains supported with removable feet.
+
+The earlier Yongu/Virtus extrusion, slide-in PCB guide, cylindrical rear stop and optional rack-tray concepts are superseded. Conventional serviceable chassis/PCB mounting will be selected with the final 1U chassis.
+
+The fixture interface is expanded to six female DB25s arranged as three stacked pairs. Under the GND-SIG-SIG-GND conductor discipline, the 150 physical contacts provide a budget of 75 GND contacts and 75 functional signal contacts. Exact connector MPN and numbered pin allocation remain open.
+
 ## 2026-10-04 — Architecture synchronization: storage and external interfaces
 
 Synchronized the preparation architecture with later Bison decisions. Internal removable SD/microSD is the persistent appliance-storage layer for recipe/assets, run logs/results, captures, deferred host/CI synchronization, staged runtime/update bundles and rollback data. External SDRAM remains probable rather than frozen and is intended only for non-safety-critical capture/log buffering and write coalescing.
