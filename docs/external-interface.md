@@ -84,7 +84,7 @@ Bison exposes one or more female DB25 fixture ports plus separate DUT power conn
 - **DUT POWER OUT:** front 2-position 5.08 mm pluggable screw-terminal system with orange/black visual treatment and explicit + / − markings.
 - **DUT / fixture:** female DB25 ports carrying fixed-function DUT-facing capabilities and the dedicated fixture interlock.
 
-Bison V1 uses **four female DB25 fixture ports**. This gives 100 physical DUT/fixture contacts.
+Bison V1 uses **six female DB25 fixture ports**, arranged mechanically as three stacked pairs. This gives 150 physical DUT/fixture contacts.
 
 The Bison contract stops at the DB25. The customer may use IDC ribbon, discrete wiring, direct PCB mating, or another suitable fixture harness downstream.
 
@@ -122,9 +122,9 @@ Bison defines the electrical function of each conductor position. The fixture de
 The DUT/fixture connector fabric reserves the four DB25s as a 1:1 return/signal budget:
 
 ```text
-100 physical DB25 contacts
-= 50 GND contacts
-+ 50 functional signal contacts
+150 physical DB25 contacts
+= 75 GND contacts
++ 75 functional signal contacts
 ```
 
 The recurring conductor discipline is:
@@ -139,7 +139,7 @@ For IDC-style DB25 cabling, this discipline is defined in **ribbon conductor ord
 
 Functional pairs that need to remain together electrically should remain on the same ribbon branch.
 
-The 50 signal contacts are the external connector budget. They do not imply a strict one-DB25-signal-to-one-MCU-pin mapping: isolated CAN, contact emulation, analog front ends, interlock and other protected interface classes may have different MCU resource costs.
+The 75 signal contacts are the external connector budget. They do not imply a strict one-DB25-signal-to-one-MCU-pin mapping: isolated CAN, contact emulation, analog front ends, interlock and other protected interface classes may have different MCU resource costs.
 
 ## Connector family preference
 
@@ -150,7 +150,7 @@ The preferred Bison DUT connector family should support both:
 
 This permits both conventional split-ribbon fixtures and compact direct-mating interposers.
 
-The connector family and pin count are frozen as four female DB25s. Exact connector MPN, mounting implementation and numbered contact allocation remain implementation decisions.
+The connector family and pin count are frozen as six female DB25s arranged as three stacked pairs. Exact connector MPN, mounting implementation and numbered contact allocation remain implementation decisions.
 
 ## Local control and indication
 
