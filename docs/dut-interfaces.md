@@ -158,7 +158,7 @@ This provides a consistent measurement interface and gives control over:
 - protection;
 - scaling accuracy.
 
-A mix of single-ended and differential measurements is required. The DUT wizard records measurement mode, assigned input/reference or pair, and acceptance limits. Optional DUT-side rail sensing uses these differential ribbon channels, not a new external connector.
+A mix of single-ended and differential measurements is required. The DUT wizard records measurement mode, assigned input/reference or pair, and acceptance limits. Optional DUT-side rail sensing uses these differential channels through the DB25 fixture interface, not a new external connector.
 
 The exact op-amp, bandwidth, input impedance, overvoltage margin, filtering and differential common-mode envelope remain implementation details. Differential mode does not imply direct 60 V input tolerance.
 
@@ -204,7 +204,7 @@ Current V1 direction:
 
 - Ethernet is the supported external host interface;
 - USB-C is retained as an internal/service interface;
-- wide ribbon cable is the DUT-side fixture interface.
+- female DB25 ports are the DUT-side fixture interface; exact port count is deferred, with four used as the current packaging upper bound.
 
 ## Deferred decisions
 
