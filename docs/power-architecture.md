@@ -93,7 +93,7 @@ The agreed power-board/product voltage variants are:
 
 The current target is a few amps; exact rating and range-boundary tolerances remain open. No single universal board is required.
 
-DUT POWER IN is a barrel jack with clear polarity marking. DUT POWER OUT uses orange positive and black return screw terminals with explicit + / − markings.
+DUT POWER IN is a barrel jack with clear polarity marking. DUT POWER OUT uses a 2-position 5.08 mm pluggable screw-terminal system with orange/black visual treatment and explicit + / − markings.
 
 Each variant needs suitable switching, sensing, transient protection and thermal margins.
 
@@ -101,7 +101,11 @@ Each variant needs suitable switching, sensing, transient protection and thermal
 
 The architecture includes a dedicated low-current pre-power measurement path, controlled main-path ramp, hardware overcurrent cutoff, output voltage/current telemetry, and switched bleed resistors. Main-switch and bleed-switch control is complementary with dead time.
 
-The new-DUT wizard records precheck response/limits and optional DUT-side voltage sensing through differential ribbon ADC channels. A precheck is a sanity check, not guaranteed polarity detection.
+The new-DUT wizard records precheck response/limits and optional DUT-side voltage sensing through differential DB25 analog channels.
+
+The precheck now includes explicit reverse-polarity validation before full-power enable. Exact implementation remains open, but a detected swapped DUT power connection must block enable.
+
+The precheck is an additional preventive layer, not the Bison-survival guarantee. Hardware protection must still tolerate reversed wiring if the check is bypassed, defeated, or inconclusive; DUT survival is not guaranteed.
 
 Clamp, logic-supply and thermal faults feed the hardware shutdown interlock. The controller does not perform time-critical protection.
 
