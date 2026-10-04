@@ -20,14 +20,16 @@ Bison provides a dedicated fixture signal:
 FIXTURE_INTERLOCK
 ```
 
-This is a core fixture input, not a generic GPIO.
+This is a dedicated contact on the DB25 fixture interface, not a generic GPIO.
 
 The preferred electrical behavior is fail-safe:
 
 - asserted = fixture fully engaged / testing permitted;
 - deasserted or open circuit = fixture not safe / testing prohibited.
 
-A broken wire or disconnected interlock should therefore be treated as an open fixture.
+A broken wire or disconnected interlock should therefore be treated as an open fixture when the interlock feature is enabled.
+
+The interlock may be disabled in firmware for fixtures/workflows that intentionally do not use it. Disabling it is an explicit configuration choice; it must not change the underlying requirement that Bison survive fixture misuse or hot-plug faults.
 
 ## Mechanical contract
 
@@ -64,7 +66,7 @@ At minimum:
 - contact-emulation channels open;
 - active protocol drivers disabled where practical.
 
-DUT power-up should be prohibited unless the interlock is asserted.
+When the interlock feature is enabled, DUT power-up should be prohibited unless the interlock is asserted.
 
 ## Bank-voltage interaction
 
