@@ -204,7 +204,8 @@ Current V1 direction:
 
 - Ethernet is the supported external host interface;
 - USB-C is retained as an internal/service interface;
-- female DB25 ports are the DUT-side fixture interface; exact port count is deferred, with four used as the current packaging upper bound.
+- four female DB25 ports are the DUT-side fixture interface;
+- the 100 physical contacts are budgeted as 50 GND contacts and 50 functional signal contacts using the recurring GND-SIG-SIG-GND conductor discipline.
 
 ## Deferred decisions
 
