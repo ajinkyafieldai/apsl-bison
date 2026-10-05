@@ -18,12 +18,32 @@
 namespace {
 
 struct Sink final : bison::cli::EventSink {
-    std::array<bison::cli::Event, 8U> events{};
+    struct StoredEvent {
+        bison::cli::Stream stream{bison::cli::Stream::out};
+        std::array<char, 128U> text{};
+        std::size_t size{};
+    };
+
+    std::array<StoredEvent, 8U> events{};
     std::size_t count{};
 
     void emit(bison::cli::Event event) override {
         assert(count < events.size());
-        events[count++] = event;
+        assert(event.text.size() <= events[count].text.size());
+
+        auto &stored = events[count++];
+        stored.stream = event.stream;
+        stored.size = event.text.size();
+
+        for (std::size_t i = 0; i < event.text.size(); ++i) {
+            stored.text[i] = event.text[i];
+        }
+    }
+
+    [[nodiscard]] std::string_view text(std::size_t index) const {
+        return {
+            events[index].text.data(),
+            events[index].size};
     }
 };
 
@@ -82,9 +102,9 @@ int main() {
     assert(result == bison::cli::RunResult::passed);
     assert(sink.count == 2U);
     assert(sink.events[0].stream == bison::cli::Stream::out);
-    assert(sink.events[0].text == "recipe loaded");
+    assert(sink.text(0U) == "recipe loaded");
     assert(sink.events[1].stream == bison::cli::Stream::out);
-    assert(sink.events[1].text == "run started");
+    assert(sink.text(1U) == "run started");
     assert(!state.active);
     assert(state.recipe_size > 0U);
 
