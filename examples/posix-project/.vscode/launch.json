@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Bison: Run recipe on POSIX",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/../../build/host-debug/bison",
+      "args": [
+        "run",
+        "--host",
+        "127.0.0.1:8080",
+        "${workspaceFolder}/recipe.lua"
+      ],
+      "cwd": "${workspaceFolder}",
+      "stopAtEntry": false,
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "preLaunchTask": "Bison: Start POSIX server"
+    }
+  ]
+}
