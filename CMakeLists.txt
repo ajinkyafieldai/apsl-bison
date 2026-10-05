@@ -74,6 +74,11 @@ if(BISON_BUILD_TESTS)
             apsl::lua
             Threads::Threads
     )
+    target_compile_definitions(
+        bison_server_integration_test
+        PRIVATE
+            BISON_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+    )
     add_test(
         NAME bison.server_integration
         COMMAND bison_server_integration_test
