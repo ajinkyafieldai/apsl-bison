@@ -2,9 +2,29 @@ cmake_minimum_required(VERSION 3.20)
 
 project(bison VERSION 0.1.0 LANGUAGES CXX)
 
+include(FetchContent)
+
+set(APSL_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(APSL_BUILD_HOST_TESTS OFF CACHE BOOL "" FORCE)
+set(APSL_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(APSL_BUILD_DOCUMENTATION OFF CACHE BOOL "" FORCE)
+set(APSL_BUILD_INSTALLATION_TESTS OFF CACHE BOOL "" FORCE)
+set(APSL_BUILD_LUA OFF CACHE BOOL "" FORCE)
+set(APSL_BUILD_LOG OFF CACHE BOOL "" FORCE)
+set(APSL_BUILD_FREERTOS OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+    apsl
+    GIT_REPOSITORY https://github.com/ajinkyafieldai/apsl.git
+    GIT_TAG devel
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(apsl)
+
 option(BISON_BUILD_TESTS "Build Bison host tests" ON)
 
 add_library(bison_cli
+    src/apsl_run_transport.cpp
     src/cli.cpp
     src/run_client.cpp
 )
@@ -15,6 +35,7 @@ target_include_directories(
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 )
+target_link_libraries(bison_cli PUBLIC apsl::core apsl::net)
 
 add_executable(bison
     src/main.cpp
