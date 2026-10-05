@@ -2,9 +2,12 @@
 #define BISON_SERVER_HPP_
 
 #include <apsl/net/web_server.hpp>
+#include <apsl/lua/runtime.hpp>
 #include <bison/run_client.hpp>
 
 #include <array>
+#include <algorithm>
+#include <cstring>
 #include <charconv>
 #include <cstddef>
 #include <cstdint>
@@ -16,6 +19,15 @@ namespace bison::server {
 
 struct State final {
     static constexpr std::size_t recipe_capacity = 32U * 1024U;
+    static constexpr std::size_t lua_arena_capacity = 96U * 1024U;
+    static constexpr std::size_t event_capacity = 32U;
+    static constexpr std::size_t event_text_capacity = 1024U;
+
+    struct RunEvent final {
+        bool error{};
+        std::array<char, event_text_capacity> text{};
+        std::size_t size{};
+    };
 
     std::array<std::byte, recipe_capacity> recipe{};
     std::size_t recipe_size{};
@@ -23,6 +35,16 @@ struct State final {
     std::uint64_t next_run{1U};
     std::uint64_t active_run{};
     bool active{};
+
+    std::array<std::byte, lua_arena_capacity> lua_arena{};
+    std::array<RunEvent, event_capacity> events{};
+    std::size_t event_count{};
+
+    std::array<char, event_text_capacity> print_buffer{};
+    std::size_t print_size{};
+    bool print_truncated{};
+
+    std::array<char, event_text_capacity + 8U> wire_buffer{};
 
     [[nodiscard]] bool upload(std::string_view body) {
         if (body.empty() || body.size() > recipe.size()) {
@@ -39,6 +61,7 @@ struct State final {
             std::span<std::byte const>{recipe.data(), recipe_size});
         active = false;
         active_run = 0U;
+        clear_events();
         return true;
     }
 
@@ -61,6 +84,7 @@ struct State final {
         run_id = next_run++;
         active_run = run_id;
         active = true;
+        clear_events();
         return true;
     }
 
@@ -68,7 +92,189 @@ struct State final {
         active = false;
         active_run = 0U;
     }
+
+    [[nodiscard]] bool execute() {
+        clear_events();
+
+        apsl::lua::PrintSink print_sink{
+            .context = this,
+            .write = &State::print_write,
+            .finish = &State::print_finish,
+        };
+
+        apsl::lua::Runtime runtime{lua_arena, print_sink};
+        if (!runtime.valid()) {
+            push_event(true, "recipe.lua:1: error: Lua runtime allocation failed");
+            return false;
+        }
+
+        auto const source = std::string_view{
+            reinterpret_cast<char const *>(recipe.data()),
+            recipe_size};
+
+        auto status = runtime.load(source, "@recipe.lua");
+        if (status != LUA_OK) {
+            push_lua_error(runtime.state());
+            return false;
+        }
+
+        status = runtime.call(0);
+        if (status != LUA_OK) {
+            push_lua_error(runtime.state());
+            return false;
+        }
+
+        return true;
+    }
+
+    [[nodiscard]] std::string_view wire_event(std::size_t index) {
+        if (index >= event_count) {
+            return {};
+        }
+
+        auto const &event = events[index];
+        auto const prefix = event.error
+            ? std::string_view{"err\t"}
+            : std::string_view{"out\t"};
+
+        auto const size = std::min(
+            wire_buffer.size(),
+            prefix.size() + event.size);
+
+        std::memcpy(
+            wire_buffer.data(),
+            prefix.data(),
+            std::min(prefix.size(), size));
+
+        if (size > prefix.size()) {
+            std::memcpy(
+                wire_buffer.data() + prefix.size(),
+                event.text.data(),
+                size - prefix.size());
+        }
+
+        return {wire_buffer.data(), size};
+    }
+
+private:
+    void clear_events() noexcept {
+        event_count = 0U;
+        print_size = 0U;
+        print_truncated = false;
+    }
+
+    void push_event(bool error, std::string_view text) noexcept {
+        if (event_count >= events.size()) {
+            return;
+        }
+
+        auto &event = events[event_count++];
+        event.error = error;
+        event.size = std::min(text.size(), event.text.size());
+
+        if (event.size > 0U) {
+            std::memcpy(event.text.data(), text.data(), event.size);
+        }
+    }
+
+    static void print_write(
+        void *context,
+        std::string_view text) {
+        auto &self = *static_cast<State *>(context);
+        auto const remaining =
+            self.print_buffer.size() - self.print_size;
+        auto const count = std::min(remaining, text.size());
+
+        if (count > 0U) {
+            std::memcpy(
+                self.print_buffer.data() + self.print_size,
+                text.data(),
+                count);
+            self.print_size += count;
+        }
+
+        if (count != text.size()) {
+            self.print_truncated = true;
+        }
+    }
+
+    static void print_finish(void *context) {
+        auto &self = *static_cast<State *>(context);
+        self.push_event(
+            false,
+            std::string_view{
+                self.print_buffer.data(),
+                self.print_size});
+
+        if (self.print_truncated) {
+            self.push_event(
+                true,
+                "recipe.lua:1: error: print output exceeded Bison event capacity");
+        }
+
+        self.print_size = 0U;
+        self.print_truncated = false;
+    }
+
+    void push_lua_error(lua_State *lua) noexcept {
+        std::size_t size{};
+        auto const *raw = lua_tolstring(lua, -1, &size);
+        if (raw == nullptr) {
+            push_event(
+                true,
+                "recipe.lua:1: error: unknown Lua error");
+            return;
+        }
+
+        auto text = std::string_view{raw, size};
+        auto const newline = text.find('\n');
+        if (newline != std::string_view::npos) {
+            text = text.substr(0U, newline);
+        }
+
+        constexpr std::string_view prefix{"recipe.lua:"};
+        if (!text.starts_with(prefix)) {
+            push_event(true, text);
+            return;
+        }
+
+        auto const message = text.find(':', prefix.size());
+        if (message == std::string_view::npos) {
+            push_event(true, text);
+            return;
+        }
+
+        auto const line = text.substr(0U, message);
+        auto detail = text.substr(message + 1U);
+        while (!detail.empty() && detail.front() == ' ') {
+            detail.remove_prefix(1U);
+        }
+
+        std::array<char, event_text_capacity> formatted{};
+        auto used = std::size_t{};
+
+        auto append = [&](std::string_view part) {
+            auto const remaining = formatted.size() - used;
+            auto const count = std::min(remaining, part.size());
+            if (count > 0U) {
+                std::memcpy(
+                    formatted.data() + used,
+                    part.data(),
+                    count);
+                used += count;
+            }
+        };
+
+        append(line);
+        append(": error: ");
+        append(detail);
+
+        push_event(
+            true,
+            std::string_view{formatted.data(), used});
+    }
 };
+
 
 inline State *state{};
 
@@ -198,23 +404,29 @@ struct RunEvents {
             co_return;
         }
 
-        if (!co_await socket.send("out\trecipe loaded")) {
-            state->finish();
-            co_return;
-        }
+        auto const passed = state->execute();
 
-        if (!co_await socket.send("out\trun started")) {
-            state->finish();
-            co_return;
+        for (std::size_t index = 0U;
+             index < state->event_count && socket.is_open();
+             ++index) {
+            auto const message = state->wire_event(index);
+            if (!co_await socket.send(message)) {
+                state->finish();
+                co_return;
+            }
         }
 
         if (socket.is_open()) {
-            (void)co_await socket.send("result\tpassed");
+            (void)co_await socket.send(
+                passed
+                    ? "result\tpassed"
+                    : "result\tfailed");
         }
 
         state->finish();
     }
 };
+
 
 constexpr auto router = apsl::web::routes(
     apsl::web::post<"/api/v1/recipes", UploadRecipe>(),
