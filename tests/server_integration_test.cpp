@@ -72,14 +72,15 @@ int main() {
         }
     }};
 
-    auto const path =
-        std::filesystem::temp_directory_path() /
-        "bison-server-integration.lua";
+    auto const hello_path =
+        std::filesystem::path{BISON_SOURCE_DIR} /
+        "examples/posix-project/hello_world.lua";
+    auto const failing_path =
+        std::filesystem::path{BISON_SOURCE_DIR} /
+        "examples/posix-project/hello_world_failing.lua";
 
-    {
-        std::ofstream output{path, std::ios::binary};
-        output << "print('hello from recipe')\n";
-    }
+    assert(std::filesystem::exists(hello_path));
+    assert(std::filesystem::exists(failing_path));
 
     std::array<char, 64U> host{};
     auto const size = std::snprintf(
@@ -96,50 +97,28 @@ int main() {
 
     auto const result = client.run(
         std::string_view{host.data(), static_cast<std::size_t>(size)},
-        path.string(),
+        hello_path.string(),
         sink);
 
     assert(result == bison::cli::RunResult::passed);
     assert(sink.count == 1U);
     assert(sink.events[0].stream == bison::cli::Stream::out);
-    assert(sink.text(0U) == "hello from recipe");
+    assert(sink.text(0U) == "hello world");
     assert(!state.active);
     assert(state.recipe_size > 0U);
 
-    {
-        std::ofstream output{path, std::ios::binary};
-        output << "local value =\n";
-    }
-
-    Sink syntax_sink{};
-    auto const syntax_result = client.run(
+    Sink failing_sink{};
+    auto const failing_result = client.run(
         std::string_view{host.data(), static_cast<std::size_t>(size)},
-        path.string(),
-        syntax_sink);
+        failing_path.string(),
+        failing_sink);
 
-    assert(syntax_result == bison::cli::RunResult::failed);
-    assert(syntax_sink.count == 1U);
-    assert(syntax_sink.events[0].stream == bison::cli::Stream::err);
-    assert(syntax_sink.text(0U).starts_with("recipe.lua:1: error: "));
-
-    {
-        std::ofstream output{path, std::ios::binary};
-        output << "local value = nil\n";
-        output << "print(value.field)\n";
-    }
-
-    Sink runtime_sink{};
-    auto const runtime_result = client.run(
-        std::string_view{host.data(), static_cast<std::size_t>(size)},
-        path.string(),
-        runtime_sink);
-
-    assert(runtime_result == bison::cli::RunResult::failed);
-    assert(runtime_sink.count == 1U);
-    assert(runtime_sink.events[0].stream == bison::cli::Stream::err);
-    assert(runtime_sink.text(0U).starts_with("recipe.lua:2: error: "));
-
-    std::filesystem::remove(path);
+    assert(failing_result == bison::cli::RunResult::failed);
+    assert(failing_sink.count == 2U);
+    assert(failing_sink.events[0].stream == bison::cli::Stream::out);
+    assert(failing_sink.text(0U) == "hello world");
+    assert(failing_sink.events[1].stream == bison::cli::Stream::err);
+    assert(failing_sink.text(1U).starts_with("recipe.lua:2: error: intentional failure"));
 
     running.store(false);
     server_thread.join();
