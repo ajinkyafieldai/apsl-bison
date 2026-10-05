@@ -3,15 +3,16 @@
 namespace bison::cli {
 
 ParseResult parse(
-    std::span<char const *const> arguments,
+    int argc,
+    char const *const *argv,
     Command &command) noexcept {
     command = {};
 
-    if (arguments.empty()) {
+    if (argc <= 0) {
         return ParseResult::help;
     }
 
-    auto const first = std::string_view{arguments.front()};
+    auto const first = std::string_view{argv[0]};
     if (first == "-h" || first == "--help") {
         return ParseResult::help;
     }
@@ -23,18 +24,18 @@ ParseResult parse(
     command.kind = CommandKind::run;
 
     auto index = std::size_t{1U};
-    while (index < arguments.size()) {
-        auto const argument = std::string_view{arguments[index]};
+    while (index < static_cast<std::size_t>(argc)) {
+        auto const argument = std::string_view{argv[index]};
 
         if (argument == "-h" || argument == "--help") {
             return ParseResult::help;
         }
 
         if (argument == "--host") {
-            if (index + 1U >= arguments.size()) {
+            if (index + 1U >= static_cast<std::size_t>(argc)) {
                 return ParseResult::invalid_arguments;
             }
-            command.run.host = arguments[index + 1U];
+            command.run.host = argv[index + 1U];
             index += 2U;
             continue;
         }
