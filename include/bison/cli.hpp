@@ -2,7 +2,6 @@
 #define BISON_CLI_HPP_
 
 #include <cstdint>
-#include <span>
 #include <string_view>
 
 namespace bison::cli {
@@ -29,7 +28,8 @@ enum class ParseResult : std::uint8_t {
 };
 
 [[nodiscard]] ParseResult parse(
-    std::span<char const *const> arguments,
+    int argc,
+    char const *const *argv,
     Command &command) noexcept;
 
 enum class Stream : std::uint8_t {
