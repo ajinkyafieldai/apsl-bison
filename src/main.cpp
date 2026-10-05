@@ -2,7 +2,6 @@
 
 #include <cstdlib>
 #include <iostream>
-#include <span>
 #include <string_view>
 
 namespace {
@@ -41,12 +40,11 @@ public:
 } // namespace
 
 int main(int argc, char **argv) {
-    auto arguments = std::span<char const *const>{
-        const_cast<char const *const *>(argv + 1),
-        static_cast<std::size_t>(argc > 0 ? argc - 1 : 0)};
-
     bison::cli::Command command{};
-    auto const parse_result = bison::cli::parse(arguments, command);
+    auto const parse_result = bison::cli::parse(
+        argc > 0 ? argc - 1 : 0,
+        argc > 0 ? argv + 1 : nullptr,
+        command);
 
     if (parse_result == bison::cli::ParseResult::help) {
         std::cout << bison::cli::usage();
