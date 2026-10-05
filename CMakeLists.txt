@@ -6,6 +6,7 @@ option(BISON_BUILD_TESTS "Build Bison host tests" ON)
 
 add_library(bison_cli
     src/cli.cpp
+    src/run_client.cpp
 )
 add_library(bison::cli ALIAS bison_cli)
 target_compile_features(bison_cli PUBLIC cxx_std_20)
@@ -28,4 +29,10 @@ if(BISON_BUILD_TESTS)
     )
     target_link_libraries(bison_cli_test PRIVATE bison::cli)
     add_test(NAME bison.cli COMMAND bison_cli_test)
+
+    add_executable(bison_run_client_test
+        tests/run_client_test.cpp
+    )
+    target_link_libraries(bison_run_client_test PRIVATE bison::cli)
+    add_test(NAME bison.run_client COMMAND bison_run_client_test)
 endif()
