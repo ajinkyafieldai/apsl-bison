@@ -9,7 +9,7 @@ set(APSL_BUILD_HOST_TESTS OFF CACHE BOOL "" FORCE)
 set(APSL_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(APSL_BUILD_DOCUMENTATION OFF CACHE BOOL "" FORCE)
 set(APSL_BUILD_INSTALLATION_TESTS OFF CACHE BOOL "" FORCE)
-set(APSL_BUILD_LUA OFF CACHE BOOL "" FORCE)
+set(APSL_BUILD_LUA ON CACHE BOOL "" FORCE)
 set(APSL_BUILD_LOG OFF CACHE BOOL "" FORCE)
 set(APSL_BUILD_FREERTOS OFF CACHE BOOL "" FORCE)
 
@@ -45,7 +45,7 @@ target_link_libraries(bison PRIVATE bison::cli)
 add_executable(bison-server
     src/server_main.cpp
 )
-target_link_libraries(bison-server PRIVATE bison::cli apsl::net)
+target_link_libraries(bison-server PRIVATE bison::cli apsl::net apsl::lua)
 
 if(BISON_BUILD_TESTS)
     enable_testing()
@@ -71,6 +71,7 @@ if(BISON_BUILD_TESTS)
         PRIVATE
             bison::cli
             apsl::net
+            apsl::lua
             Threads::Threads
     )
     add_test(
