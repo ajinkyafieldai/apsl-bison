@@ -1,0 +1,61 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Bison: Build host tools",
+      "type": "shell",
+      "command": "cmake --preset host-debug && cmake --build --preset host-debug",
+      "options": {
+        "cwd": "${workspaceFolder}/../.."
+      },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Bison: Start POSIX server",
+      "type": "shell",
+      "command": "${workspaceFolder}/../../build/host-debug/bison-server 8080",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "dependsOn": "Bison: Build host tools",
+      "problemMatcher": {
+        "base": "$gcc",
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "bison-server:",
+          "endsPattern": "listening on http://127\\.0\\.0\\.1:8080"
+        }
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "Bison: Run recipe",
+      "type": "shell",
+      "command": "${workspaceFolder}/../../build/host-debug/bison run --host 127.0.0.1:8080 ${workspaceFolder}/recipe.lua",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "dependsOn": "Bison: Start POSIX server",
+      "problemMatcher": {
+        "owner": "bison",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": {
+          "regexp": "^(.+\\.lua):([0-9]+):\\s+(error|warning|note):\\s+(.*)$",
+          "file": 1,
+          "line": 2,
+          "severity": 3,
+          "message": 4
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    }
+  ]
+}
