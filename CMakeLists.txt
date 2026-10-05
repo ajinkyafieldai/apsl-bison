@@ -49,6 +49,7 @@ target_link_libraries(bison-server PRIVATE bison::cli apsl::net)
 
 if(BISON_BUILD_TESTS)
     enable_testing()
+    find_package(Threads REQUIRED)
 
     add_executable(bison_cli_test
         tests/cli_test.cpp
@@ -61,4 +62,19 @@ if(BISON_BUILD_TESTS)
     )
     target_link_libraries(bison_run_client_test PRIVATE bison::cli)
     add_test(NAME bison.run_client COMMAND bison_run_client_test)
+
+    add_executable(bison_server_integration_test
+        tests/server_integration_test.cpp
+    )
+    target_link_libraries(
+        bison_server_integration_test
+        PRIVATE
+            bison::cli
+            apsl::net
+            Threads::Threads
+    )
+    add_test(
+        NAME bison.server_integration
+        COMMAND bison_server_integration_test
+    )
 endif()
