@@ -366,23 +366,8 @@ RunResult ApslRunTransport::stream_run(
         return RunResult::transport_error;
     }
 
-    std::array<char, 96U> path{};
-    constexpr std::string_view prefix{"/api/v1/runs/"};
-    constexpr std::string_view suffix{"/events"};
-
-    std::memcpy(path.data(), prefix.data(), prefix.size());
-    auto *first = path.data() + prefix.size();
-    auto *last = path.data() + path.size() - suffix.size();
-
-    auto const encoded = std::to_chars(first, last, run.value);
-    if (encoded.ec != std::errc{}) {
-        return RunResult::transport_error;
-    }
-
-    std::memcpy(encoded.ptr, suffix.data(), suffix.size());
-    auto const path_text = std::string_view{
-        path.data(),
-        static_cast<std::size_t>(encoded.ptr - path.data()) + suffix.size()};
+    (void)run;
+    constexpr std::string_view path_text{"/api/v1/run/events"};
 
     apsl::net::posix::WebTransport transport{endpoint.address};
     WebClient client{transport, host};
