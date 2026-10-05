@@ -681,6 +681,203 @@ Implementation must determine:
 The controlled-shutdown budget should be derived from measured worst-case firmware and SD-card behavior rather than from nominal filesystem timings.
 
 
+## Lua recipe execution model
+
+Lua is a strong candidate for the Bison recipe language because the target user is already expected to be comfortable with CI/CD systems, Git, scripting and code review. The language choice should therefore optimize for expressiveness, reproducibility and tooling rather than for a no-code audience.
+
+The intended execution model is:
+
+```text
+higher priority
+-----------------------------
+hardware IRQs / timer callbacks
+critical driver work
+main Bison control task
+-----------------------------
+Lua recipe task
+-----------------------------
+lower-priority logging / housekeeping
+```
+
+The Lua task should run at a lower priority than Bison's main control task. Recipe execution must never prevent the control task from meeting its deadlines.
+
+Lua should not directly own hardware drivers. Bison-facing Lua APIs should post commands/events into the native Bison control machinery and yield while waiting for completion, events or timeouts.
+
+Conceptually:
+
+```text
+Lua task
+   |
+   | Bison API call
+   v
+native command/event path
+   |
+   v
+main Bison task
+   |
+   v
+hardware
+```
+
+Responses/events flow back to the Lua task and resume the waiting coroutine.
+
+This means Lua expresses test intent and control flow while deterministic hardware behavior and precise timing remain implemented in native code.
+
+### Timing model
+
+Recipe time values should be represented using exact integer durations internally rather than floating-point seconds.
+
+The authoring layer may expose units such as milliseconds, microseconds and, where useful, nanoseconds. Native timers and the Bison scheduler remain responsible for meeting actual timing requirements.
+
+Human-facing logs may use millisecond timestamps by default while recorded event timing preserves finer monotonic precision for cause/effect measurement and export.
+
+### Restricted Lua environment
+
+Bison should embed a deliberately reduced Lua environment rather than expose a general host runtime.
+
+Retain useful language features such as:
+
+- functions;
+- tables;
+- loops;
+- conditionals;
+- coroutines;
+- selected math/string/table support.
+
+Do not expose unnecessary host capabilities such as:
+
+- filesystem I/O;
+- operating-system/process APIs;
+- package/module search paths;
+- arbitrary native module loading;
+- unrestricted imports such as `require`;
+- `dofile` / `loadfile`;
+- unrestricted dynamic code generation;
+- ordinary recipe access to the full Lua `debug` library;
+- arbitrary network APIs.
+
+The preferred implementation is to compile/open only selected libraries and expose a Bison-owned standard library/API.
+
+Lua runtime/API versioning becomes part of recipe reproducibility. Run records should retain the recipe hash, relevant asset hashes, and the Bison/Lua API/runtime version used to execute the test.
+
+### Visual and text editing
+
+The canonical recipe source remains plain text in Git.
+
+A node/visual editor may be provided as an alternate authoring surface for Lua recipes. The existence of a visual editor does not require hiding the source language from advanced users.
+
+The hosted engineering UI should therefore support a strong text-first experience with syntax support, autocomplete, linting, Bison API documentation and validation, while allowing a visual/node representation where practical.
+
+## Simulation-first recipe debugging
+
+Bison's unusual lock-step simulation capability should be the primary advanced recipe-debugging environment rather than relying mainly on a conventional remote Lua debugger.
+
+The same recipe and Bison API should be executable against two backends:
+
+```text
+Lua recipe
+   |
+   v
+Bison API
+   |
+   +--> real Bison backend
+   |
+   +--> simulation backend
+```
+
+The simulation backend should preserve the externally visible semantics of Bison while replacing real hardware time and I/O with deterministic simulated equivalents.
+
+### Virtual time
+
+Simulation should use virtual time.
+
+A recipe such as:
+
+```lua
+power.on()
+expect(boot_ok):within(2 * s)
+```
+
+does not need to consume two seconds of wall-clock time. The simulator can advance deterministically to the next relevant event or timeout.
+
+This enables both faster-than-real-time execution and precise reproduction of timing-dependent failures.
+
+### Debug capabilities
+
+The simulation/debug environment should aim to provide:
+
+- deterministic replay;
+- pause/resume;
+- step one recipe operation;
+- step one simulated event;
+- run until an expectation resolves;
+- run until failure;
+- signal/event injection;
+- fault injection;
+- inspection of virtual Bison state;
+- inspection of DUT-model state;
+- faster-than-real-time execution;
+- slower-than-real-time execution where useful for observation;
+- reproducible timeout and race-condition testing;
+- source-line/stack information for script errors;
+- CI-style execution traces identical in structure to real runs.
+
+Traditional Lua debugging features may still be useful for script errors, but the primary debugging abstraction should be the simulated hardware/test behavior rather than raw VM internals.
+
+### Development workflow
+
+The desired recipe workflow is:
+
+```text
+Write recipe
+    |
+    v
+Simulate
+    |
+    v
+Inspect CI-style trace
+    |
+    v
+Inject edge cases / faults
+    |
+    v
+Replay and refine
+    |
+    v
+Run unchanged on real Bison
+```
+
+The recipe should not require a different format or API when moving from simulation to physical hardware.
+
+## Commercial direction for simulation
+
+Simulation is a meaningful premium software capability rather than a cosmetic UI feature.
+
+The base Bison product should remain capable of:
+
+- authoring recipes;
+- validating/linting recipes;
+- running recipes on real Bison hardware;
+- viewing live output and results;
+- Git-based recipe versioning.
+
+A premium simulation offering may add capabilities such as:
+
+- deterministic virtual-time recipe execution;
+- fault and event injection;
+- advanced step/run-to-event controls;
+- replay;
+- faster-than-real-time testing;
+- simulated DUT models;
+- hardware-independent CI execution;
+- regression suites against DUT models before physical hardware is available.
+
+The commercial principle is:
+
+> Write once. Simulate before hardware. Run unchanged on Bison.
+
+Exact product names, licensing, packaging and tier boundaries remain commercial decisions and are not frozen by this architecture note.
+
 ## Deferred decisions
 
 The following are intentionally left open:
