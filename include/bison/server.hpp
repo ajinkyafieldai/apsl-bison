@@ -43,6 +43,7 @@ struct State final {
     std::array<char, event_text_capacity> print_buffer{};
     std::size_t print_size{};
     bool print_truncated{};
+    bool event_failure{};
 
     std::array<char, event_text_capacity + 8U> wire_buffer{};
 
@@ -124,7 +125,7 @@ struct State final {
             return false;
         }
 
-        return true;
+        return !event_failure;
     }
 
     [[nodiscard]] std::string_view wire_event(std::size_t index) {
@@ -161,10 +162,12 @@ private:
         event_count = 0U;
         print_size = 0U;
         print_truncated = false;
+        event_failure = false;
     }
 
     void push_event(bool error, std::string_view text) noexcept {
         if (event_count >= events.size()) {
+            event_failure = true;
             return;
         }
 
@@ -207,6 +210,7 @@ private:
                 self.print_size});
 
         if (self.print_truncated) {
+            self.event_failure = true;
             self.push_event(
                 true,
                 "recipe.lua:1: error: print output exceeded Bison event capacity");
