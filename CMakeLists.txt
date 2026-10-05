@@ -42,6 +42,11 @@ add_executable(bison
 )
 target_link_libraries(bison PRIVATE bison::cli)
 
+add_executable(bison-server
+    src/server_main.cpp
+)
+target_link_libraries(bison-server PRIVATE bison::cli apsl::net)
+
 if(BISON_BUILD_TESTS)
     enable_testing()
 
