@@ -1,4 +1,5 @@
 #include <bison/cli.hpp>
+#include <bison/apsl_run_transport.hpp>
 #include <bison/run_client.hpp>
 
 #include <cstdlib>
@@ -22,36 +23,6 @@ public:
     }
 };
 
-class UnavailableTransport final : public bison::cli::RunTransport {
-public:
-    bool upload_recipe(
-        std::string_view,
-        std::string_view,
-        std::span<std::byte const>,
-        bison::cli::RecipeDigest const &,
-        bison::cli::EventSink &sink) override {
-        sink.emit({
-            .stream = bison::cli::Stream::err,
-            .text = "bison: HTTP/WebSocket transport backend is not linked yet",
-        });
-        return false;
-    }
-
-    bool start_run(
-        std::string_view,
-        bison::cli::RecipeDigest const &,
-        bison::cli::RunHandle &,
-        bison::cli::EventSink &) override {
-        return false;
-    }
-
-    bison::cli::RunResult stream_run(
-        std::string_view,
-        bison::cli::RunHandle,
-        bison::cli::EventSink &) override {
-        return bison::cli::RunResult::transport_error;
-    }
-};
 
 } // namespace
 
@@ -73,7 +44,7 @@ int main(int argc, char **argv) {
     }
 
     TerminalSink sink{};
-    UnavailableTransport transport{};
+    bison::cli::ApslRunTransport transport{};
     bison::cli::RunClient client{transport};
     return static_cast<int>(bison::cli::execute(command, client, sink));
 }
