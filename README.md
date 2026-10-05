@@ -14,6 +14,7 @@ Bison is a networked DUT helper for fixture-based test and automation.
 - [Mechanical architecture](docs/mechanical-architecture.md)
 - [North-star visual](docs/north-star-visual.md)
 - [Engineering log](docs/engineering-log.md)
+- [Lua recipe runtime and capability architecture](docs/lua-recipe-runtime.md)
 
 Preparation documentation does not initiate peripheral allocation or circuit implementation.
 
