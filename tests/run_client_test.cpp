@@ -1,3 +1,4 @@
+#include <bison/apsl_run_transport.hpp>
 #include <bison/run_client.hpp>
 
 #include <array>
@@ -103,6 +104,33 @@ int main() {
             digest_text(digest) ==
             "ba7816bf8f01cfea414140de5dae2223"
             "b00361a396177a9cb410ff61f20015ad");
+    }
+
+
+    {
+        Sink events{};
+
+        assert(
+            bison::cli::decode_run_event("out\\tbooting", events) ==
+            bison::cli::WireEventResult::emitted);
+        assert(
+            bison::cli::decode_run_event("err\\tfault", events) ==
+            bison::cli::WireEventResult::emitted);
+        assert(
+            bison::cli::decode_run_event("result\\tpassed", events) ==
+            bison::cli::WireEventResult::passed);
+        assert(
+            bison::cli::decode_run_event("result\\tfailed", events) ==
+            bison::cli::WireEventResult::failed);
+        assert(
+            bison::cli::decode_run_event("wat", events) ==
+            bison::cli::WireEventResult::invalid);
+
+        assert(events.count == 2U);
+        assert(events.events[0].stream == bison::cli::Stream::out);
+        assert(events.events[0].text == "booting");
+        assert(events.events[1].stream == bison::cli::Stream::err);
+        assert(events.events[1].text == "fault");
     }
 
     auto const path =
