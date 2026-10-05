@@ -20,7 +20,7 @@ namespace {
 struct Sink final : bison::cli::EventSink {
     struct StoredEvent {
         bison::cli::Stream stream{bison::cli::Stream::out};
-        std::array<char, 128U> text{};
+        std::array<char, 1024U> text{};
         std::size_t size{};
     };
 
@@ -100,13 +100,44 @@ int main() {
         sink);
 
     assert(result == bison::cli::RunResult::passed);
-    assert(sink.count == 2U);
+    assert(sink.count == 1U);
     assert(sink.events[0].stream == bison::cli::Stream::out);
-    assert(sink.text(0U) == "recipe loaded");
-    assert(sink.events[1].stream == bison::cli::Stream::out);
-    assert(sink.text(1U) == "run started");
+    assert(sink.text(0U) == "hello from recipe");
     assert(!state.active);
     assert(state.recipe_size > 0U);
+
+    {
+        std::ofstream output{path, std::ios::binary};
+        output << "local value =\n";
+    }
+
+    Sink syntax_sink{};
+    auto const syntax_result = client.run(
+        std::string_view{host.data(), static_cast<std::size_t>(size)},
+        path.string(),
+        syntax_sink);
+
+    assert(syntax_result == bison::cli::RunResult::failed);
+    assert(syntax_sink.count == 1U);
+    assert(syntax_sink.events[0].stream == bison::cli::Stream::err);
+    assert(syntax_sink.text(0U).starts_with("recipe.lua:1: error: "));
+
+    {
+        std::ofstream output{path, std::ios::binary};
+        output << "local value = nil\n";
+        output << "print(value.field)\n";
+    }
+
+    Sink runtime_sink{};
+    auto const runtime_result = client.run(
+        std::string_view{host.data(), static_cast<std::size_t>(size)},
+        path.string(),
+        runtime_sink);
+
+    assert(runtime_result == bison::cli::RunResult::failed);
+    assert(runtime_sink.count == 1U);
+    assert(runtime_sink.events[0].stream == bison::cli::Stream::err);
+    assert(runtime_sink.text(0U).starts_with("recipe.lua:2: error: "));
 
     std::filesystem::remove(path);
 
