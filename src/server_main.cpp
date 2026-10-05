@@ -98,10 +98,26 @@ struct UploadRecipe {
     }
 };
 
+struct FixedBody final {
+    std::array<char, 32U> storage{};
+    std::size_t used{};
+
+    [[nodiscard]] std::size_t size() const noexcept {
+        return used;
+    }
+
+    [[nodiscard]] bool empty() const noexcept {
+        return used == 0U;
+    }
+
+    [[nodiscard]] operator std::string_view() const noexcept {
+        return {storage.data(), used};
+    }
+};
+
 struct StartRunResult final {
     bool ok{};
-    std::array<char, 32U> body{};
-    std::size_t size{};
+    FixedBody body{};
 };
 
 struct StartRun {
@@ -126,8 +142,8 @@ struct StartRun {
         }
 
         auto const encoded = std::to_chars(
-            result.body.data(),
-            result.body.data() + result.body.size(),
+            result.body.storage.data(),
+            result.body.storage.data() + result.body.storage.size(),
             run);
 
         if (encoded.ec != std::errc{}) {
@@ -136,19 +152,20 @@ struct StartRun {
         }
 
         result.ok = true;
-        result.size = static_cast<std::size_t>(
-            encoded.ptr - result.body.data());
+        result.body.used = static_cast<std::size_t>(
+            encoded.ptr - result.body.storage.data());
         return result;
     }
 
-    static apsl::web::BasicResponse<std::array<char, 32U>> serialize(
+    static apsl::web::BasicResponse<FixedBody> serialize(
         StartRunResult result) {
         if (!result.ok) {
-            std::array<char, 32U> body{};
+            FixedBody body{};
             constexpr std::string_view message{"run rejected\n"};
             for (std::size_t i = 0; i < message.size(); ++i) {
-                body[i] = message[i];
+                body.storage[i] = message[i];
             }
+            body.used = message.size();
 
             return {
                 .status = 400,
