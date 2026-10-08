@@ -111,10 +111,22 @@ int main() {
         Sink events{};
 
         assert(
-            bison::cli::decode_run_event("out\\tbooting", events, {.value = 41U}) ==
+            bison::cli::decode_run_event(
+                "out\tbooting",
+                events,
+                {.value = 41U}) ==
             bison::cli::WireEventResult::emitted);
         assert(
-            bison::cli::decode_run_event("err\\tfault", events, {.value = 41U}) ==
+            bison::cli::decode_run_event(
+                "err\tfault",
+                events,
+                {.value = 41U}) ==
+            bison::cli::WireEventResult::emitted);
+        assert(
+            bison::cli::decode_run_event(
+                "state\t41\trunning",
+                events,
+                {.value = 41U}) ==
             bison::cli::WireEventResult::emitted);
         assert(
             bison::cli::decode_run_event(
@@ -129,7 +141,10 @@ int main() {
                 {.value = 42U}) ==
             bison::cli::WireEventResult::failed);
         assert(
-            bison::cli::decode_run_event("wat", events, {.value = 41U}) ==
+            bison::cli::decode_run_event(
+                "wat",
+                events,
+                {.value = 41U}) ==
             bison::cli::WireEventResult::invalid);
         assert(
             bison::cli::decode_run_event(
