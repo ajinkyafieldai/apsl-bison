@@ -117,10 +117,16 @@ int main() {
             bison::cli::decode_run_event("err\\tfault", events, {.value = 41U}) ==
             bison::cli::WireEventResult::emitted);
         assert(
-            bison::cli::decode_run_event("result\\tpassed", events) ==
+            bison::cli::decode_run_event(
+                "state\t41\tpassed",
+                events,
+                {.value = 41U}) ==
             bison::cli::WireEventResult::passed);
         assert(
-            bison::cli::decode_run_event("result\\tfailed", events) ==
+            bison::cli::decode_run_event(
+                "state\t42\tfailed",
+                events,
+                {.value = 42U}) ==
             bison::cli::WireEventResult::failed);
         assert(
             bison::cli::decode_run_event("wat", events, {.value = 41U}) ==
