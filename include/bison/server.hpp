@@ -17,6 +17,28 @@
 
 namespace bison::server {
 
+enum class RunPhase : std::uint8_t {
+    idle,
+    running,
+    passed,
+    failed,
+};
+
+[[nodiscard]] constexpr std::string_view run_phase_text(
+    RunPhase phase) noexcept {
+    switch (phase) {
+    case RunPhase::idle:
+        return "idle";
+    case RunPhase::running:
+        return "running";
+    case RunPhase::passed:
+        return "passed";
+    case RunPhase::failed:
+        return "failed";
+    }
+    return "idle";
+}
+
 struct State final {
     static constexpr std::size_t recipe_capacity = 32U * 1024U;
     static constexpr std::size_t lua_arena_capacity = 96U * 1024U;
@@ -34,6 +56,8 @@ struct State final {
     cli::RecipeDigest digest{};
     std::uint64_t next_run{1U};
     std::uint64_t active_run{};
+    std::uint64_t last_run{};
+    RunPhase run_phase{RunPhase::idle};
     bool active{};
 
     std::array<std::byte, lua_arena_capacity> lua_arena{};
@@ -48,7 +72,7 @@ struct State final {
     std::array<char, event_text_capacity + 8U> wire_buffer{};
 
     [[nodiscard]] bool upload(std::string_view body) {
-        if (body.empty() || body.size() > recipe.size()) {
+        if (active || body.empty() || body.size() > recipe.size()) {
             return false;
         }
 
@@ -60,8 +84,6 @@ struct State final {
         recipe_size = body.size();
         digest = cli::sha256(
             std::span<std::byte const>{recipe.data(), recipe_size});
-        active = false;
-        active_run = 0U;
         clear_events();
         return true;
     }
@@ -84,14 +106,22 @@ struct State final {
 
         run_id = next_run++;
         active_run = run_id;
+        run_phase = RunPhase::running;
         active = true;
         clear_events();
         return true;
     }
 
-    void finish() noexcept {
+    void finish(bool passed) noexcept {
+        last_run = active_run;
+        run_phase = passed ? RunPhase::passed : RunPhase::failed;
         active = false;
         active_run = 0U;
+    }
+
+    [[nodiscard]] std::string_view snapshot_run_state() {
+        auto const run = active ? active_run : last_run;
+        return wire_state(run, run_phase_text(run_phase));
     }
 
     [[nodiscard]] bool execute() {
@@ -394,7 +424,7 @@ struct StartRun {
             run);
 
         if (encoded.ec != std::errc{}) {
-            state->finish();
+            state->finish(false);
             return {};
         }
 
@@ -457,7 +487,7 @@ struct RunEvents {
              ++index) {
             auto const message = state->wire_event(index);
             if (!co_await socket.send(message)) {
-                state->finish();
+                state->finish(passed);
                 co_return;
             }
         }
@@ -469,7 +499,35 @@ struct RunEvents {
                     passed ? "passed" : "failed"));
         }
 
-        state->finish();
+        state->finish(passed);
+    }
+};
+
+struct RunStateSnapshot {
+    static constexpr std::string_view Mime_Type{};
+    using request_type = std::string_view;
+
+    static std::optional<request_type> parse(std::string_view body) {
+        if (!body.empty()) {
+            return std::nullopt;
+        }
+        return body;
+    }
+
+    static apsl::web::Response handle(
+        apsl::web::Context,
+        request_type) {
+        if (state == nullptr) {
+            return {
+                503,
+                apsl::web::ContentType::TextPlain,
+                "state unavailable\n"};
+        }
+
+        return {
+            200,
+            apsl::web::ContentType::TextPlain,
+            state->snapshot_run_state()};
     }
 };
 
@@ -477,6 +535,7 @@ struct RunEvents {
 constexpr auto router = apsl::web::routes(
     apsl::web::post<"/api/v1/recipes", UploadRecipe>(),
     apsl::web::post<"/api/v1/runs", StartRun>(),
+    apsl::web::get<"/api/v1/run/state", RunStateSnapshot>(),
     apsl::web::websocket<"/api/v1/run/events", RunEvents>());
 
 } // namespace bison::server

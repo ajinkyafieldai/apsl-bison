@@ -61,6 +61,8 @@ int main() {
     bison::server::State state{};
     bison::server::state = &state;
 
+    assert(state.snapshot_run_state() == "state\t0\tidle");
+
     apsl::web::Server<
         decltype(bison::server::router),
         4U,
@@ -119,6 +121,7 @@ int main() {
     assert(sink.events[2].state == bison::cli::RunState::passed);
     assert(!state.active);
     assert(state.recipe_size > 0U);
+    assert(state.snapshot_run_state() == "state\t1\tpassed");
 
     Sink failing_sink{};
     auto const failing_result = client.run(
@@ -140,6 +143,7 @@ int main() {
     assert(failing_sink.events[3].kind == bison::cli::EventKind::run_state);
     assert(failing_sink.events[3].run == 2U);
     assert(failing_sink.events[3].state == bison::cli::RunState::failed);
+    assert(state.snapshot_run_state() == "state\t2\tfailed");
 
     running.store(false);
     server_thread.join();
