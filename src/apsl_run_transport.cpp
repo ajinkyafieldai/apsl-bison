@@ -144,6 +144,7 @@ Task start_task(
 Task stream_task(
     WebClient &client,
     std::string_view path,
+    RunHandle expected_run,
     EventSink &sink,
     RunResult &result) {
     auto connection = co_await client.connect_websocket(path);
@@ -159,7 +160,7 @@ Task stream_task(
             co_return;
         }
 
-        switch (decode_run_event(*message, sink)) {
+        switch (decode_run_event(*message, sink, expected_run)) {
         case WireEventResult::emitted:
             break;
 
@@ -197,7 +198,8 @@ Task stream_task(
 
 WireEventResult decode_run_event(
     std::string_view message,
-    EventSink &sink) {
+    EventSink &sink,
+    RunHandle expected_run) {
     auto const separator = message.find('\t');
     auto const kind = message.substr(0U, separator);
     auto const payload =
@@ -236,6 +238,10 @@ WireEventResult decode_run_event(
 
         if (parsed.ec != std::errc{} ||
             parsed.ptr != run_text.data() + run_text.size()) {
+            return WireEventResult::invalid;
+        }
+
+        if (run != expected_run.value) {
             return WireEventResult::invalid;
         }
 
@@ -411,6 +417,7 @@ RunResult ApslRunTransport::stream_run(
     auto task = stream_task(
         client,
         path_text,
+        run,
         sink,
         result);
 
