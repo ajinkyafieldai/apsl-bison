@@ -75,6 +75,60 @@ namespace {
     return response;
 }
 
+[[nodiscard]] std::string http_post_empty(
+    std::uint16_t port,
+    std::string_view path) {
+    auto const socket = ::socket(AF_INET, SOCK_STREAM, 0);
+    assert(socket >= 0);
+
+    sockaddr_in address{};
+    address.sin_family = AF_INET;
+    address.sin_port = htons(port);
+    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+
+    assert(::connect(
+        socket,
+        reinterpret_cast<sockaddr *>(&address),
+        sizeof(address)) == 0);
+
+    std::string request{
+        "POST " + std::string{path} +
+        " HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+        "Content-Length: 0\r\n"
+        "Connection: close\r\n\r\n"};
+
+    auto offset = std::size_t{};
+    while (offset < request.size()) {
+        auto const written = ::send(
+            socket,
+            request.data() + offset,
+            request.size() - offset,
+            0);
+        assert(written > 0);
+        offset += static_cast<std::size_t>(written);
+    }
+
+    std::string response{};
+    std::array<char, 1024U> buffer{};
+    for (;;) {
+        auto const received = ::recv(
+            socket,
+            buffer.data(),
+            buffer.size(),
+            0);
+        if (received == 0) {
+            break;
+        }
+        assert(received > 0);
+        response.append(
+            buffer.data(),
+            static_cast<std::size_t>(received));
+    }
+
+    ::close(socket);
+    return response;
+}
+
 struct Sink final : bison::cli::EventSink {
     struct StoredEvent {
         bison::cli::Stream stream{bison::cli::Stream::out};
@@ -130,6 +184,13 @@ int main() {
         bison::server::run_id_from_path("/api/v1/runs/12");
     assert(parsed_run);
     assert(*parsed_run == 12U);
+    assert(!bison::server::stop_run_id_from_path("/api/v1/runs/12"));
+    assert(!bison::server::stop_run_id_from_path("/api/v1/runs/0/stop"));
+    assert(!bison::server::stop_run_id_from_path("/api/v1/runs/nope/stop"));
+    auto const parsed_stop =
+        bison::server::stop_run_id_from_path("/api/v1/runs/12/stop");
+    assert(parsed_stop);
+    assert(*parsed_stop == 12U);
 
     apsl::web::ConnectionState endpoint_connection{};
     auto const no_record = bison::server::LatestRunRecord::handle(
@@ -317,6 +378,42 @@ int main() {
 
     auto const malformed_http = http_get(port, "/api/v1/runs/nope");
     assert(malformed_http.starts_with("HTTP/1.1 400 Bad Request"));
+
+    auto const stop_digest = bison::cli::hex(state.digest);
+    auto const stop_digest_text = std::string_view{
+        stop_digest.data(),
+        stop_digest.size()};
+    std::uint64_t stop_run{};
+    assert(state.start(stop_digest_text, stop_run));
+    assert(stop_run == 3U);
+    assert(state.active);
+    assert(state.active_run == stop_run);
+
+    auto const stop_http = http_post_empty(
+        port,
+        "/api/v1/runs/3/stop");
+    assert(stop_http.starts_with("HTTP/1.1 204 No Content"));
+    assert(!state.active);
+    assert(
+        state.snapshot_run_state() ==
+        "state\t3\tinterrupted");
+    auto const *stopped_record = state.find_run_record(3U);
+    assert(stopped_record != nullptr);
+    assert(
+        stopped_record->phase ==
+        bison::server::RunPhase::interrupted);
+
+    auto const repeated_stop_http = http_post_empty(
+        port,
+        "/api/v1/runs/3/stop");
+    assert(repeated_stop_http.starts_with(
+        "HTTP/1.1 400 Bad Request"));
+
+    auto const malformed_stop_http = http_post_empty(
+        port,
+        "/api/v1/runs/nope/stop");
+    assert(malformed_stop_http.starts_with(
+        "HTTP/1.1 400 Bad Request"));
 
     running.store(false);
     server_thread.join();
