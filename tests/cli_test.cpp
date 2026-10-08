@@ -110,7 +110,8 @@ int main() {
         assert(bison::cli::parse(2, argv, command) == bison::cli::ParseResult::ok);
 
         Sink sink{};
-        Client client{.result = bison::cli::RunResult::failed};
+        Client client{};
+        client.result = bison::cli::RunResult::failed;
 
         assert(
             bison::cli::execute(command, client, sink) ==
@@ -123,7 +124,8 @@ int main() {
         assert(bison::cli::parse(2, argv, command) == bison::cli::ParseResult::ok);
 
         Sink sink{};
-        Client client{.result = bison::cli::RunResult::transport_error};
+        Client client{};
+        client.result = bison::cli::RunResult::transport_error;
 
         assert(
             bison::cli::execute(command, client, sink) ==
