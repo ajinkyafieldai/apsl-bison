@@ -155,12 +155,29 @@ struct State final {
         return &run_records[index];
     }
 
-    [[nodiscard]] std::string_view snapshot_latest_run_record() {
-        auto const *record = latest_run_record();
-        if (record == nullptr) {
-            return {};
+    [[nodiscard]] RunRecord const *find_run_record(
+        std::uint64_t run) const noexcept {
+        if (run == 0U || run_record_count == 0U) {
+            return nullptr;
         }
 
+        for (std::size_t offset = 0U;
+             offset < run_record_count;
+             ++offset) {
+            auto const index =
+                (next_run_record + run_records.size() - 1U - offset) %
+                run_records.size();
+            auto const &record = run_records[index];
+            if (record.run == run) {
+                return &record;
+            }
+        }
+
+        return nullptr;
+    }
+
+    [[nodiscard]] std::string_view snapshot_run_record(
+        RunRecord const &record) {
         auto used = std::size_t{};
         auto append = [&](std::string_view part) {
             auto const remaining = record_wire_buffer.size() - used;
@@ -186,28 +203,35 @@ struct State final {
         };
 
         append("run\t");
-        append_number(record->run);
+        append_number(record.run);
         append("\nstate\t");
-        append(run_phase_text(record->phase));
+        append(run_phase_text(record.phase));
         append("\nrecipe\t");
-        auto const encoded_digest = cli::hex(record->digest);
+        auto const encoded_digest = cli::hex(record.digest);
         append({
             encoded_digest.data(),
             encoded_digest.size()});
         append("\n");
 
-        for (std::size_t i = 0U; i < record->event_count; ++i) {
-            auto const &event = record->events[i];
+        for (std::size_t i = 0U; i < record.event_count; ++i) {
+            auto const &event = record.events[i];
             append(event.error ? "err\t" : "out\t");
             append({event.text.data(), event.size});
             append("\n");
         }
 
-        if (record->events_truncated) {
+        if (record.events_truncated) {
             append("meta\tevents-truncated\n");
         }
 
         return {record_wire_buffer.data(), used};
+    }
+
+    [[nodiscard]] std::string_view snapshot_latest_run_record() {
+        auto const *record = latest_run_record();
+        return record == nullptr
+            ? std::string_view{}
+            : snapshot_run_record(*record);
     }
 
     [[nodiscard]] std::string_view snapshot_run_state() {
@@ -673,6 +697,78 @@ struct LatestRunRecord {
     }
 };
 
+
+struct RunRecordByIdRoute {
+    static constexpr std::string_view prefix{"/api/v1/runs/"};
+
+    bool dispatch(
+        apsl::web::ConnectionState &connection,
+        apsl::web::Request const &request) const {
+        if (request.method != apsl::web::Method::Get ||
+            !request.path.starts_with(prefix) ||
+            request.path == "/api/v1/runs/latest") {
+            return false;
+        }
+
+        auto const run_text = request.path.substr(prefix.size());
+        std::uint64_t run{};
+        auto const parsed = std::from_chars(
+            run_text.data(),
+            run_text.data() + run_text.size(),
+            run);
+
+        if (run_text.empty() ||
+            parsed.ec != std::errc{} ||
+            parsed.ptr != run_text.data() + run_text.size() ||
+            run == 0U) {
+            if (!apsl::web::start_response(
+                    connection,
+                    apsl::web::Response{
+                        400,
+                        apsl::web::ContentType::TextPlain,
+                        "invalid run id\n"})) {
+                connection.reset();
+            }
+            return true;
+        }
+
+        if (state == nullptr) {
+            if (!apsl::web::start_response(
+                    connection,
+                    apsl::web::Response{
+                        503,
+                        apsl::web::ContentType::TextPlain,
+                        "state unavailable\n"})) {
+                connection.reset();
+            }
+            return true;
+        }
+
+        auto const *record = state->find_run_record(run);
+        if (record == nullptr) {
+            if (!apsl::web::start_response(
+                    connection,
+                    apsl::web::Response{
+                        404,
+                        apsl::web::ContentType::TextPlain,
+                        "run not retained\n"})) {
+                connection.reset();
+            }
+            return true;
+        }
+
+        if (!apsl::web::start_response(
+                connection,
+                apsl::web::Response{
+                    200,
+                    apsl::web::ContentType::TextPlain,
+                    state->snapshot_run_record(*record)})) {
+            connection.reset();
+        }
+        return true;
+    }
+};
+
 struct RunStateSnapshot {
     static constexpr std::string_view Mime_Type{};
     using request_type = std::string_view;
@@ -706,6 +802,7 @@ constexpr auto router = apsl::web::routes(
     apsl::web::post<"/api/v1/recipes", UploadRecipe>(),
     apsl::web::post<"/api/v1/runs", StartRun>(),
     apsl::web::get<"/api/v1/runs/latest", LatestRunRecord>(),
+    RunRecordByIdRoute{},
     apsl::web::get<"/api/v1/run/state", RunStateSnapshot>(),
     apsl::web::websocket<"/api/v1/run/events", RunEvents>());
 
