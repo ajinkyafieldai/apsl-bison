@@ -62,6 +62,13 @@ int main() {
     bison::server::state = &state;
 
     assert(state.snapshot_run_state() == "state\t0\tidle");
+    assert(state.latest_run_record() == nullptr);
+
+    apsl::web::ConnectionState endpoint_connection{};
+    auto const no_record = bison::server::LatestRunRecord::handle(
+        apsl::web::Context{endpoint_connection},
+        {});
+    assert(no_record.status == 404);
 
     apsl::web::Server<
         decltype(bison::server::router),
@@ -123,6 +130,26 @@ int main() {
     assert(state.recipe_size > 0U);
     assert(state.snapshot_run_state() == "state\t1\tpassed");
 
+    auto const *passed_record = state.latest_run_record();
+    assert(passed_record != nullptr);
+    assert(passed_record->run == 1U);
+    assert(passed_record->phase == bison::server::RunPhase::passed);
+    assert(passed_record->digest == state.digest);
+    assert(passed_record->event_count == 1U);
+    assert(!passed_record->events[0].error);
+    auto const passed_event_text = std::string_view{
+        passed_record->events[0].text.data(),
+        passed_record->events[0].size};
+    assert(passed_event_text == "hello world");
+
+    auto const passed_response = bison::server::LatestRunRecord::handle(
+        apsl::web::Context{endpoint_connection},
+        {});
+    assert(passed_response.status == 200);
+    assert(passed_response.body.starts_with("run\t1\nstate\tpassed\nrecipe\t"));
+    assert(passed_response.body.find("\nout\thello world\n") !=
+           std::string_view::npos);
+
     Sink failing_sink{};
     auto const failing_result = client.run(
         std::string_view{host.data(), static_cast<std::size_t>(size)},
@@ -145,6 +172,45 @@ int main() {
     assert(failing_sink.events[3].state == bison::cli::RunState::failed);
     assert(state.snapshot_run_state() == "state\t2\tfailed");
 
+    auto const *failed_record = state.latest_run_record();
+    assert(failed_record != nullptr);
+    assert(failed_record->run == 2U);
+    assert(failed_record->phase == bison::server::RunPhase::failed);
+    assert(failed_record->digest == state.digest);
+    assert(failed_record->event_count == 2U);
+    assert(!failed_record->events[0].error);
+    assert(failed_record->events[1].error);
+    auto const failed_event_text = std::string_view{
+        failed_record->events[1].text.data(),
+        failed_record->events[1].size};
+    assert(failed_event_text.starts_with(
+        "recipe.lua:2: error: intentional failure"));
+
+    auto const failed_snapshot = state.snapshot_latest_run_record();
+    assert(failed_snapshot.starts_with("run\t2\nstate\tfailed\nrecipe\t"));
+    assert(failed_snapshot.find("\nout\thello world\n") !=
+           std::string_view::npos);
+    assert(failed_snapshot.find(
+        "\nerr\trecipe.lua:2: error: intentional failure") !=
+        std::string_view::npos);
+    assert(state.run_record_count == 2U);
+
     running.store(false);
     server_thread.join();
+
+    bison::server::State history_state{};
+    assert(history_state.upload("print('history')"));
+    for (std::uint64_t run = 1U; run <= 6U; ++run) {
+        history_state.active_run = run;
+        history_state.active = true;
+        history_state.finish((run % 2U) == 0U);
+    }
+
+    assert(
+        history_state.run_record_count ==
+        bison::server::State::run_record_capacity);
+    auto const *latest_history = history_state.latest_run_record();
+    assert(latest_history != nullptr);
+    assert(latest_history->run == 6U);
+    assert(latest_history->phase == bison::server::RunPhase::passed);
 }
