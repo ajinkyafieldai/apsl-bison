@@ -137,9 +137,10 @@ int main() {
     assert(passed_record->digest == state.digest);
     assert(passed_record->event_count == 1U);
     assert(!passed_record->events[0].error);
-    assert(std::string_view{
+    auto const passed_event_text = std::string_view{
         passed_record->events[0].text.data(),
-        passed_record->events[0].size} == "hello world");
+        passed_record->events[0].size};
+    assert(passed_event_text == "hello world");
 
     auto const passed_response = bison::server::LatestRunRecord::handle(
         apsl::web::Context{endpoint_connection},
@@ -179,10 +180,11 @@ int main() {
     assert(failed_record->event_count == 2U);
     assert(!failed_record->events[0].error);
     assert(failed_record->events[1].error);
-    assert(std::string_view{
+    auto const failed_event_text = std::string_view{
         failed_record->events[1].text.data(),
-        failed_record->events[1].size}.starts_with(
-            "recipe.lua:2: error: intentional failure"));
+        failed_record->events[1].size};
+    assert(failed_event_text.starts_with(
+        "recipe.lua:2: error: intentional failure"));
 
     auto const failed_snapshot = state.snapshot_latest_run_record();
     assert(failed_snapshot.starts_with("run\t2\nstate\tfailed\nrecipe\t"));
