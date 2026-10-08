@@ -234,6 +234,60 @@ struct State final {
             : snapshot_run_record(*record);
     }
 
+    [[nodiscard]] std::string_view snapshot_run_records() {
+        auto used = std::size_t{};
+        auto append = [&](std::string_view part) {
+            auto const remaining = record_wire_buffer.size() - used;
+            auto const count = std::min(remaining, part.size());
+            if (count > 0U) {
+                std::memcpy(
+                    record_wire_buffer.data() + used,
+                    part.data(),
+                    count);
+                used += count;
+            }
+        };
+
+        auto append_number = [&](std::uint64_t value) {
+            auto const encoded = std::to_chars(
+                record_wire_buffer.data() + used,
+                record_wire_buffer.data() + record_wire_buffer.size(),
+                value);
+            if (encoded.ec == std::errc{}) {
+                used = static_cast<std::size_t>(
+                    encoded.ptr - record_wire_buffer.data());
+            }
+        };
+
+        for (std::size_t offset = 0U;
+             offset < run_record_count;
+             ++offset) {
+            auto const index =
+                (next_run_record + run_records.size() - 1U - offset) %
+                run_records.size();
+            auto const &record = run_records[index];
+
+            append("run\t");
+            append_number(record.run);
+            append("\t");
+            append(run_phase_text(record.phase));
+            append("\t");
+
+            auto const encoded_digest = cli::hex(record.digest);
+            append({
+                encoded_digest.data(),
+                encoded_digest.size()});
+
+            append("\t");
+            append_number(record.event_count);
+            append(record.events_truncated
+                ? "\ttruncated\n"
+                : "\tcomplete\n");
+        }
+
+        return {record_wire_buffer.data(), used};
+    }
+
     [[nodiscard]] std::string_view snapshot_run_state() {
         auto const run = active ? active_run : last_run;
         return wire_state(run, run_phase_text(run_phase));
@@ -661,6 +715,34 @@ struct RunEvents {
     }
 };
 
+struct RunRecordList {
+    static constexpr std::string_view Mime_Type{};
+    using request_type = std::string_view;
+
+    static std::optional<request_type> parse(std::string_view body) {
+        if (!body.empty()) {
+            return std::nullopt;
+        }
+        return body;
+    }
+
+    static apsl::web::Response handle(
+        apsl::web::Context,
+        request_type) {
+        if (state == nullptr) {
+            return {
+                503,
+                apsl::web::ContentType::TextPlain,
+                "state unavailable\n"};
+        }
+
+        return {
+            200,
+            apsl::web::ContentType::TextPlain,
+            state->snapshot_run_records()};
+    }
+};
+
 struct LatestRunRecord {
     static constexpr std::string_view Mime_Type{};
     using request_type = std::string_view;
@@ -819,6 +901,7 @@ struct RunStateSnapshot {
 constexpr auto router = apsl::web::routes(
     apsl::web::post<"/api/v1/recipes", UploadRecipe>(),
     apsl::web::post<"/api/v1/runs", StartRun>(),
+    apsl::web::get<"/api/v1/runs", RunRecordList>(),
     apsl::web::get<"/api/v1/runs/latest", LatestRunRecord>(),
     RunRecordByIdRoute{},
     apsl::web::get<"/api/v1/run/state", RunStateSnapshot>(),
