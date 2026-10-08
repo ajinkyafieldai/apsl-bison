@@ -63,6 +63,15 @@ int main() {
 
     assert(state.snapshot_run_state() == "state\t0\tidle");
     assert(state.latest_run_record() == nullptr);
+    assert(!bison::server::run_id_from_path("/api/v1/runs"));
+    assert(!bison::server::run_id_from_path("/api/v1/runs/"));
+    assert(!bison::server::run_id_from_path("/api/v1/runs/latest"));
+    assert(!bison::server::run_id_from_path("/api/v1/runs/0"));
+    assert(!bison::server::run_id_from_path("/api/v1/runs/12x"));
+    auto const parsed_run =
+        bison::server::run_id_from_path("/api/v1/runs/12");
+    assert(parsed_run);
+    assert(*parsed_run == 12U);
 
     apsl::web::ConnectionState endpoint_connection{};
     auto const no_record = bison::server::LatestRunRecord::handle(
@@ -194,6 +203,13 @@ int main() {
         "\nerr\trecipe.lua:2: error: intentional failure") !=
         std::string_view::npos);
     assert(state.run_record_count == 2U);
+    auto const *run_one = state.find_run_record(1U);
+    assert(run_one != nullptr);
+    assert(run_one->phase == bison::server::RunPhase::passed);
+    auto const run_one_snapshot = state.snapshot_run_record(*run_one);
+    assert(run_one_snapshot.starts_with(
+        "run\t1\nstate\tpassed\nrecipe\t"));
+    assert(state.find_run_record(99U) == nullptr);
 
     running.store(false);
     server_thread.join();
@@ -213,4 +229,11 @@ int main() {
     assert(latest_history != nullptr);
     assert(latest_history->run == 6U);
     assert(latest_history->phase == bison::server::RunPhase::passed);
+    assert(history_state.find_run_record(1U) == nullptr);
+    assert(history_state.find_run_record(2U) == nullptr);
+    for (std::uint64_t run = 3U; run <= 6U; ++run) {
+        auto const *record = history_state.find_run_record(run);
+        assert(record != nullptr);
+        assert(record->run == run);
+    }
 }
