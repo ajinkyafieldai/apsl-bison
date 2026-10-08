@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cstring>
 #include <charconv>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -65,6 +66,9 @@ struct State final {
         std::uint64_t run{};
         cli::RecipeDigest digest{};
         RunPhase phase{RunPhase::idle};
+        std::uint64_t started_ms{};
+        std::uint64_t finished_ms{};
+        std::uint64_t duration_ms{};
         std::array<RunRecordEvent, record_event_capacity> events{};
         std::size_t event_count{};
         bool events_truncated{};
@@ -75,6 +79,7 @@ struct State final {
     cli::RecipeDigest digest{};
     std::uint64_t next_run{1U};
     std::uint64_t active_run{};
+    std::uint64_t active_started_ms{};
     std::uint64_t last_run{};
     RunPhase run_phase{RunPhase::idle};
     bool active{};
@@ -94,6 +99,8 @@ struct State final {
 
     std::array<char, event_text_capacity + 8U> wire_buffer{};
     std::array<char, record_wire_capacity> record_wire_buffer{};
+    std::chrono::steady_clock::time_point boot_time{
+        std::chrono::steady_clock::now()};
 
     [[nodiscard]] bool upload(std::string_view body) {
         if (active || body.empty() || body.size() > recipe.size()) {
@@ -130,6 +137,7 @@ struct State final {
 
         run_id = next_run++;
         active_run = run_id;
+        active_started_ms = monotonic_ms();
         run_phase = RunPhase::running;
         active = true;
         clear_events();
@@ -137,11 +145,17 @@ struct State final {
     }
 
     void finish(bool passed) noexcept {
+        auto const finished_ms = monotonic_ms();
         last_run = active_run;
         run_phase = passed ? RunPhase::passed : RunPhase::failed;
-        store_run_record(last_run, run_phase);
+        store_run_record(
+            last_run,
+            run_phase,
+            active_started_ms,
+            finished_ms);
         active = false;
         active_run = 0U;
+        active_started_ms = 0U;
     }
 
     [[nodiscard]] RunRecord const *latest_run_record() const noexcept {
@@ -206,6 +220,12 @@ struct State final {
         append_number(record.run);
         append("\nstate\t");
         append(run_phase_text(record.phase));
+        append("\nstarted_ms\t");
+        append_number(record.started_ms);
+        append("\nfinished_ms\t");
+        append_number(record.finished_ms);
+        append("\nduration_ms\t");
+        append_number(record.duration_ms);
         append("\nrecipe\t");
         auto const encoded_digest = cli::hex(record.digest);
         append({
@@ -278,6 +298,10 @@ struct State final {
                 encoded_digest.data(),
                 encoded_digest.size()});
 
+            append("\t");
+            append_number(record.started_ms);
+            append("\t");
+            append_number(record.duration_ms);
             append("\t");
             append_number(record.event_count);
             append(record.events_truncated
@@ -392,9 +416,22 @@ struct State final {
     }
 
 private:
+    [[nodiscard]] std::uint64_t monotonic_ms() const noexcept {
+        auto const elapsed =
+            std::chrono::steady_clock::now() - boot_time;
+        auto const milliseconds =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                elapsed).count();
+        return milliseconds < 0
+            ? 0U
+            : static_cast<std::uint64_t>(milliseconds);
+    }
+
     void store_run_record(
         std::uint64_t run,
-        RunPhase phase) noexcept {
+        RunPhase phase,
+        std::uint64_t started_ms,
+        std::uint64_t finished_ms) noexcept {
         if (run == 0U) {
             return;
         }
@@ -404,6 +441,12 @@ private:
         record.run = run;
         record.digest = digest;
         record.phase = phase;
+        record.started_ms = started_ms;
+        record.finished_ms = finished_ms;
+        record.duration_ms =
+            finished_ms >= started_ms
+                ? finished_ms - started_ms
+                : 0U;
         record.event_count = std::min(
             event_count,
             record.events.size());

@@ -218,7 +218,16 @@ int main() {
         apsl::web::Context{endpoint_connection},
         {});
     assert(passed_response.status == 200);
-    assert(passed_response.body.starts_with("run\t1\nstate\tpassed\nrecipe\t"));
+    assert(passed_response.body.starts_with(
+        "run\t1\nstate\tpassed\nstarted_ms\t"));
+    assert(passed_response.body.find("\nfinished_ms\t") !=
+           std::string_view::npos);
+    assert(passed_response.body.find("\nduration_ms\t") !=
+           std::string_view::npos);
+    assert(passed_record->finished_ms >= passed_record->started_ms);
+    assert(
+        passed_record->duration_ms ==
+        passed_record->finished_ms - passed_record->started_ms);
     assert(passed_response.body.find("\nout\thello world\n") !=
            std::string_view::npos);
 
@@ -259,7 +268,12 @@ int main() {
         "recipe.lua:2: error: intentional failure"));
 
     auto const failed_snapshot = state.snapshot_latest_run_record();
-    assert(failed_snapshot.starts_with("run\t2\nstate\tfailed\nrecipe\t"));
+    assert(failed_snapshot.starts_with(
+        "run\t2\nstate\tfailed\nstarted_ms\t"));
+    assert(failed_record->finished_ms >= failed_record->started_ms);
+    assert(
+        failed_record->duration_ms ==
+        failed_record->finished_ms - failed_record->started_ms);
     assert(failed_snapshot.find("\nout\thello world\n") !=
            std::string_view::npos);
     assert(failed_snapshot.find(
@@ -271,33 +285,32 @@ int main() {
     assert(run_one->phase == bison::server::RunPhase::passed);
     auto const run_one_snapshot = state.snapshot_run_record(*run_one);
     assert(run_one_snapshot.starts_with(
-        "run\t1\nstate\tpassed\nrecipe\t"));
+        "run\t1\nstate\tpassed\nstarted_ms\t"));
     assert(state.find_run_record(99U) == nullptr);
 
     auto const list_http = http_get(port, "/api/v1/runs");
     assert(list_http.starts_with("HTTP/1.1 200 OK"));
-    auto const failed_summary =
+    auto const failed_digest = bison::cli::hex(failed_record->digest);
+    auto const passed_digest = bison::cli::hex(passed_record->digest);
+    auto const failed_summary_prefix =
         std::string{"run\t2\tfailed\t"} +
-        std::string{
-            bison::cli::hex(failed_record->digest).data(),
-            bison::cli::hex(failed_record->digest).size()} +
-        "\t2\tcomplete\n";
-    auto const passed_summary =
+        std::string{failed_digest.data(), failed_digest.size()} +
+        "\t";
+    auto const passed_summary_prefix =
         std::string{"run\t1\tpassed\t"} +
-        std::string{
-            bison::cli::hex(passed_record->digest).data(),
-            bison::cli::hex(passed_record->digest).size()} +
-        "\t1\tcomplete\n";
-    auto const failed_position = list_http.find(failed_summary);
-    auto const passed_position = list_http.find(passed_summary);
+        std::string{passed_digest.data(), passed_digest.size()} +
+        "\t";
+    auto const failed_position = list_http.find(failed_summary_prefix);
+    auto const passed_position = list_http.find(passed_summary_prefix);
     assert(failed_position != std::string::npos);
     assert(passed_position != std::string::npos);
     assert(failed_position < passed_position);
 
     auto const run_one_http = http_get(port, "/api/v1/runs/1");
     assert(run_one_http.starts_with("HTTP/1.1 200 OK"));
-    assert(run_one_http.find("run\t1\nstate\tpassed\nrecipe\t") !=
-           std::string::npos);
+    assert(run_one_http.find(
+        "run\t1\nstate\tpassed\nstarted_ms\t") !=
+        std::string::npos);
 
     auto const missing_http = http_get(port, "/api/v1/runs/99");
     assert(missing_http.starts_with("HTTP/1.1 404 Not Found"));
