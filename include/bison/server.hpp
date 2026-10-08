@@ -159,6 +159,14 @@ struct State final {
         complete(RunPhase::interrupted);
     }
 
+    [[nodiscard]] bool stop(std::uint64_t run) noexcept {
+        if (!active || active_run != run) {
+            return false;
+        }
+        interrupt();
+        return true;
+    }
+
     [[nodiscard]] RunRecord const *latest_run_record() const noexcept {
         if (run_record_count == 0U) {
             return nullptr;
@@ -737,9 +745,13 @@ struct RunEvents {
             if (socket.is_open()) {
                 (void)co_await socket.send("err\tno active run");
             }
-            if (socket.is_open() && state != nullptr) {
+            if (socket.is_open() &&
+                state != nullptr &&
+                state->last_run != 0U) {
                 (void)co_await socket.send(
-                    state->wire_state(0U, "failed"));
+                    state->wire_state(
+                        state->last_run,
+                        run_phase_text(state->run_phase)));
             }
             co_return;
         }
@@ -871,6 +883,109 @@ struct LatestRunRecord {
     return run;
 }
 
+[[nodiscard]] inline std::optional<std::uint64_t> stop_run_id_from_path(
+    std::string_view path) {
+    constexpr std::string_view prefix{"/api/v1/runs/"};
+    constexpr std::string_view suffix{"/stop"};
+
+    if (!path.starts_with(prefix) ||
+        !path.ends_with(suffix) ||
+        path.size() <= prefix.size() + suffix.size()) {
+        return std::nullopt;
+    }
+
+    auto const run_text = path.substr(
+        prefix.size(),
+        path.size() - prefix.size() - suffix.size());
+
+    std::uint64_t run{};
+    auto const parsed = std::from_chars(
+        run_text.data(),
+        run_text.data() + run_text.size(),
+        run);
+
+    if (parsed.ec != std::errc{} ||
+        parsed.ptr != run_text.data() + run_text.size() ||
+        run == 0U) {
+        return std::nullopt;
+    }
+
+    return run;
+}
+
+struct StopRunRoute {
+    static constexpr std::string_view prefix{"/api/v1/runs/"};
+
+    bool dispatch(
+        apsl::web::ConnectionState &connection,
+        apsl::web::Request const &request) const {
+        if (request.method != apsl::web::Method::Post ||
+            !request.path.starts_with(prefix) ||
+            !request.path.ends_with("/stop")) {
+            return false;
+        }
+
+        if (!request.body.empty()) {
+            if (!apsl::web::start_response(
+                    connection,
+                    apsl::web::Response{
+                        400,
+                        apsl::web::ContentType::TextPlain,
+                        "stop request must be empty\n"})) {
+                connection.reset();
+            }
+            return true;
+        }
+
+        auto const run = stop_run_id_from_path(request.path);
+        if (!run) {
+            if (!apsl::web::start_response(
+                    connection,
+                    apsl::web::Response{
+                        400,
+                        apsl::web::ContentType::TextPlain,
+                        "invalid run id\n"})) {
+                connection.reset();
+            }
+            return true;
+        }
+
+        if (state == nullptr) {
+            if (!apsl::web::start_response(
+                    connection,
+                    apsl::web::Response{
+                        503,
+                        apsl::web::ContentType::TextPlain,
+                        "state unavailable\n"})) {
+                connection.reset();
+            }
+            return true;
+        }
+
+        if (!state->stop(*run)) {
+            if (!apsl::web::start_response(
+                    connection,
+                    apsl::web::Response{
+                        400,
+                        apsl::web::ContentType::TextPlain,
+                        "run not active\n"})) {
+                connection.reset();
+            }
+            return true;
+        }
+
+        if (!apsl::web::start_response(
+                connection,
+                apsl::web::Response{
+                    204,
+                    apsl::web::ContentType::TextPlain,
+                    ""})) {
+            connection.reset();
+        }
+        return true;
+    }
+};
+
 struct RunRecordByIdRoute {
     static constexpr std::string_view prefix{"/api/v1/runs/"};
 
@@ -967,6 +1082,7 @@ constexpr auto router = apsl::web::routes(
     apsl::web::post<"/api/v1/runs", StartRun>(),
     apsl::web::get<"/api/v1/runs", RunRecordList>(),
     apsl::web::get<"/api/v1/runs/latest", LatestRunRecord>(),
+    StopRunRoute{},
     RunRecordByIdRoute{},
     apsl::web::get<"/api/v1/run/state", RunStateSnapshot>(),
     apsl::web::websocket<"/api/v1/run/events", RunEvents>());
