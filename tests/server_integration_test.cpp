@@ -136,6 +136,11 @@ int main() {
         apsl::web::Context{endpoint_connection},
         {});
     assert(no_record.status == 404);
+    auto const empty_list = bison::server::RunRecordList::handle(
+        apsl::web::Context{endpoint_connection},
+        {});
+    assert(empty_list.status == 200);
+    assert(empty_list.body.empty());
 
     apsl::web::Server<
         decltype(bison::server::router),
@@ -269,6 +274,26 @@ int main() {
         "run\t1\nstate\tpassed\nrecipe\t"));
     assert(state.find_run_record(99U) == nullptr);
 
+    auto const list_http = http_get(port, "/api/v1/runs");
+    assert(list_http.starts_with("HTTP/1.1 200 OK"));
+    auto const failed_summary =
+        std::string{"run\t2\tfailed\t"} +
+        std::string{
+            bison::cli::hex(failed_record->digest).data(),
+            bison::cli::hex(failed_record->digest).size()} +
+        "\t2\tcomplete\n";
+    auto const passed_summary =
+        std::string{"run\t1\tpassed\t"} +
+        std::string{
+            bison::cli::hex(passed_record->digest).data(),
+            bison::cli::hex(passed_record->digest).size()} +
+        "\t1\tcomplete\n";
+    auto const failed_position = list_http.find(failed_summary);
+    auto const passed_position = list_http.find(passed_summary);
+    assert(failed_position != std::string::npos);
+    assert(passed_position != std::string::npos);
+    assert(failed_position < passed_position);
+
     auto const run_one_http = http_get(port, "/api/v1/runs/1");
     assert(run_one_http.starts_with("HTTP/1.1 200 OK"));
     assert(run_one_http.find("run\t1\nstate\tpassed\nrecipe\t") !=
@@ -305,4 +330,17 @@ int main() {
         assert(record != nullptr);
         assert(record->run == run);
     }
+
+    auto const history_list = history_state.snapshot_run_records();
+    auto const run6 = history_list.find("run\t6\tpassed\t");
+    auto const run5 = history_list.find("run\t5\tfailed\t");
+    auto const run4 = history_list.find("run\t4\tpassed\t");
+    auto const run3 = history_list.find("run\t3\tfailed\t");
+    assert(run6 != std::string_view::npos);
+    assert(run5 != std::string_view::npos);
+    assert(run4 != std::string_view::npos);
+    assert(run3 != std::string_view::npos);
+    assert(run6 < run5);
+    assert(run5 < run4);
+    assert(run4 < run3);
 }
