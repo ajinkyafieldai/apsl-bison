@@ -174,6 +174,11 @@ Task stream_task(
             (void)co_await connection->close();
             co_return;
 
+        case WireEventResult::interrupted:
+            result = RunResult::interrupted;
+            (void)co_await connection->close();
+            co_return;
+
         case WireEventResult::invalid:
             sink.emit({
                 .stream = Stream::err,
@@ -257,12 +262,18 @@ WireEventResult decode_run_event(
         } else if (state_text == "failed") {
             state = RunState::failed;
             result = WireEventResult::failed;
+        } else if (state_text == "interrupted") {
+            state = RunState::interrupted;
+            result = WireEventResult::interrupted;
         } else {
             return WireEventResult::invalid;
         }
 
         sink.emit({
-            .stream = state == RunState::failed ? Stream::err : Stream::out,
+            .stream =
+                state == RunState::failed || state == RunState::interrupted
+                    ? Stream::err
+                    : Stream::out,
             .kind = EventKind::run_state,
             .run = run,
             .state = state,
