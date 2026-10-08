@@ -15,7 +15,65 @@
 #include <string>
 #include <thread>
 
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
 namespace {
+
+[[nodiscard]] std::string http_get(
+    std::uint16_t port,
+    std::string_view path) {
+    auto const socket = ::socket(AF_INET, SOCK_STREAM, 0);
+    assert(socket >= 0);
+
+    sockaddr_in address{};
+    address.sin_family = AF_INET;
+    address.sin_port = htons(port);
+    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+
+    assert(::connect(
+        socket,
+        reinterpret_cast<sockaddr *>(&address),
+        sizeof(address)) == 0);
+
+    std::string request{
+        "GET " + std::string{path} +
+        " HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+        "Connection: close\r\n\r\n"};
+
+    auto offset = std::size_t{};
+    while (offset < request.size()) {
+        auto const written = ::send(
+            socket,
+            request.data() + offset,
+            request.size() - offset,
+            0);
+        assert(written > 0);
+        offset += static_cast<std::size_t>(written);
+    }
+
+    std::string response{};
+    std::array<char, 1024U> buffer{};
+    for (;;) {
+        auto const received = ::recv(
+            socket,
+            buffer.data(),
+            buffer.size(),
+            0);
+        if (received == 0) {
+            break;
+        }
+        assert(received > 0);
+        response.append(
+            buffer.data(),
+            static_cast<std::size_t>(received));
+    }
+
+    ::close(socket);
+    return response;
+}
 
 struct Sink final : bison::cli::EventSink {
     struct StoredEvent {
@@ -63,6 +121,15 @@ int main() {
 
     assert(state.snapshot_run_state() == "state\t0\tidle");
     assert(state.latest_run_record() == nullptr);
+    assert(!bison::server::run_id_from_path("/api/v1/runs"));
+    assert(!bison::server::run_id_from_path("/api/v1/runs/"));
+    assert(!bison::server::run_id_from_path("/api/v1/runs/latest"));
+    assert(!bison::server::run_id_from_path("/api/v1/runs/0"));
+    assert(!bison::server::run_id_from_path("/api/v1/runs/12x"));
+    auto const parsed_run =
+        bison::server::run_id_from_path("/api/v1/runs/12");
+    assert(parsed_run);
+    assert(*parsed_run == 12U);
 
     apsl::web::ConnectionState endpoint_connection{};
     auto const no_record = bison::server::LatestRunRecord::handle(
@@ -194,6 +261,24 @@ int main() {
         "\nerr\trecipe.lua:2: error: intentional failure") !=
         std::string_view::npos);
     assert(state.run_record_count == 2U);
+    auto const *run_one = state.find_run_record(1U);
+    assert(run_one != nullptr);
+    assert(run_one->phase == bison::server::RunPhase::passed);
+    auto const run_one_snapshot = state.snapshot_run_record(*run_one);
+    assert(run_one_snapshot.starts_with(
+        "run\t1\nstate\tpassed\nrecipe\t"));
+    assert(state.find_run_record(99U) == nullptr);
+
+    auto const run_one_http = http_get(port, "/api/v1/runs/1");
+    assert(run_one_http.starts_with("HTTP/1.1 200 OK"));
+    assert(run_one_http.find("run\t1\nstate\tpassed\nrecipe\t") !=
+           std::string::npos);
+
+    auto const missing_http = http_get(port, "/api/v1/runs/99");
+    assert(missing_http.starts_with("HTTP/1.1 404 Not Found"));
+
+    auto const malformed_http = http_get(port, "/api/v1/runs/nope");
+    assert(malformed_http.starts_with("HTTP/1.1 400 Bad Request"));
 
     running.store(false);
     server_thread.join();
@@ -213,4 +298,11 @@ int main() {
     assert(latest_history != nullptr);
     assert(latest_history->run == 6U);
     assert(latest_history->phase == bison::server::RunPhase::passed);
+    assert(history_state.find_run_record(1U) == nullptr);
+    assert(history_state.find_run_record(2U) == nullptr);
+    for (std::uint64_t run = 3U; run <= 6U; ++run) {
+        auto const *record = history_state.find_run_record(run);
+        assert(record != nullptr);
+        assert(record->run == run);
+    }
 }
