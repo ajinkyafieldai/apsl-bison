@@ -698,6 +698,33 @@ struct LatestRunRecord {
 };
 
 
+[[nodiscard]] inline std::optional<std::uint64_t> run_id_from_path(
+    std::string_view path) {
+    constexpr std::string_view prefix{"/api/v1/runs/"};
+    if (!path.starts_with(prefix)) {
+        return std::nullopt;
+    }
+
+    auto const run_text = path.substr(prefix.size());
+    if (run_text.empty()) {
+        return std::nullopt;
+    }
+
+    std::uint64_t run{};
+    auto const parsed = std::from_chars(
+        run_text.data(),
+        run_text.data() + run_text.size(),
+        run);
+
+    if (parsed.ec != std::errc{} ||
+        parsed.ptr != run_text.data() + run_text.size() ||
+        run == 0U) {
+        return std::nullopt;
+    }
+
+    return run;
+}
+
 struct RunRecordByIdRoute {
     static constexpr std::string_view prefix{"/api/v1/runs/"};
 
@@ -710,17 +737,8 @@ struct RunRecordByIdRoute {
             return false;
         }
 
-        auto const run_text = request.path.substr(prefix.size());
-        std::uint64_t run{};
-        auto const parsed = std::from_chars(
-            run_text.data(),
-            run_text.data() + run_text.size(),
-            run);
-
-        if (run_text.empty() ||
-            parsed.ec != std::errc{} ||
-            parsed.ptr != run_text.data() + run_text.size() ||
-            run == 0U) {
+        auto const run = run_id_from_path(request.path);
+        if (!run) {
             if (!apsl::web::start_response(
                     connection,
                     apsl::web::Response{
@@ -744,7 +762,7 @@ struct RunRecordByIdRoute {
             return true;
         }
 
-        auto const *record = state->find_run_record(run);
+        auto const *record = state->find_run_record(*run);
         if (record == nullptr) {
             if (!apsl::web::start_response(
                     connection,
