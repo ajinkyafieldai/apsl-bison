@@ -44,11 +44,30 @@ struct State final {
     static constexpr std::size_t lua_arena_capacity = 96U * 1024U;
     static constexpr std::size_t event_capacity = 32U;
     static constexpr std::size_t event_text_capacity = 1024U;
+    static constexpr std::size_t run_record_capacity = 4U;
+    static constexpr std::size_t record_event_capacity = 8U;
+    static constexpr std::size_t record_event_text_capacity = 256U;
+    static constexpr std::size_t record_wire_capacity = 4096U;
 
     struct RunEvent final {
         bool error{};
         std::array<char, event_text_capacity> text{};
         std::size_t size{};
+    };
+
+    struct RunRecordEvent final {
+        bool error{};
+        std::array<char, record_event_text_capacity> text{};
+        std::size_t size{};
+    };
+
+    struct RunRecord final {
+        std::uint64_t run{};
+        cli::RecipeDigest digest{};
+        RunPhase phase{RunPhase::idle};
+        std::array<RunRecordEvent, record_event_capacity> events{};
+        std::size_t event_count{};
+        bool events_truncated{};
     };
 
     std::array<std::byte, recipe_capacity> recipe{};
@@ -60,6 +79,10 @@ struct State final {
     RunPhase run_phase{RunPhase::idle};
     bool active{};
 
+    std::array<RunRecord, run_record_capacity> run_records{};
+    std::size_t run_record_count{};
+    std::size_t next_run_record{};
+
     std::array<std::byte, lua_arena_capacity> lua_arena{};
     std::array<RunEvent, event_capacity> events{};
     std::size_t event_count{};
@@ -70,6 +93,7 @@ struct State final {
     bool event_failure{};
 
     std::array<char, event_text_capacity + 8U> wire_buffer{};
+    std::array<char, record_wire_capacity> record_wire_buffer{};
 
     [[nodiscard]] bool upload(std::string_view body) {
         if (active || body.empty() || body.size() > recipe.size()) {
@@ -115,8 +139,75 @@ struct State final {
     void finish(bool passed) noexcept {
         last_run = active_run;
         run_phase = passed ? RunPhase::passed : RunPhase::failed;
+        store_run_record(last_run, run_phase);
         active = false;
         active_run = 0U;
+    }
+
+    [[nodiscard]] RunRecord const *latest_run_record() const noexcept {
+        if (run_record_count == 0U) {
+            return nullptr;
+        }
+
+        auto const index =
+            (next_run_record + run_records.size() - 1U) %
+            run_records.size();
+        return &run_records[index];
+    }
+
+    [[nodiscard]] std::string_view snapshot_latest_run_record() {
+        auto const *record = latest_run_record();
+        if (record == nullptr) {
+            return {};
+        }
+
+        auto used = std::size_t{};
+        auto append = [&](std::string_view part) {
+            auto const remaining = record_wire_buffer.size() - used;
+            auto const count = std::min(remaining, part.size());
+            if (count > 0U) {
+                std::memcpy(
+                    record_wire_buffer.data() + used,
+                    part.data(),
+                    count);
+                used += count;
+            }
+        };
+
+        auto append_number = [&](std::uint64_t value) {
+            auto const encoded = std::to_chars(
+                record_wire_buffer.data() + used,
+                record_wire_buffer.data() + record_wire_buffer.size(),
+                value);
+            if (encoded.ec == std::errc{}) {
+                used = static_cast<std::size_t>(
+                    encoded.ptr - record_wire_buffer.data());
+            }
+        };
+
+        append("run\t");
+        append_number(record->run);
+        append("\nstate\t");
+        append(run_phase_text(record->phase));
+        append("\nrecipe\t");
+        auto const encoded_digest = cli::hex(record->digest);
+        append({
+            encoded_digest.data(),
+            encoded_digest.size()});
+        append("\n");
+
+        for (std::size_t i = 0U; i < record->event_count; ++i) {
+            auto const &event = record->events[i];
+            append(event.error ? "err\t" : "out\t");
+            append({event.text.data(), event.size});
+            append("\n");
+        }
+
+        if (record->events_truncated) {
+            append("meta\tevents-truncated\n");
+        }
+
+        return {record_wire_buffer.data(), used};
     }
 
     [[nodiscard]] std::string_view snapshot_run_state() {
@@ -223,6 +314,49 @@ struct State final {
     }
 
 private:
+    void store_run_record(
+        std::uint64_t run,
+        RunPhase phase) noexcept {
+        if (run == 0U) {
+            return;
+        }
+
+        auto &record = run_records[next_run_record];
+        record = {};
+        record.run = run;
+        record.digest = digest;
+        record.phase = phase;
+        record.event_count = std::min(
+            event_count,
+            record.events.size());
+        record.events_truncated =
+            event_count > record.events.size();
+
+        for (std::size_t i = 0U; i < record.event_count; ++i) {
+            auto const &source = events[i];
+            auto &target = record.events[i];
+            target.error = source.error;
+            target.size = std::min(
+                source.size,
+                target.text.size());
+            if (target.size > 0U) {
+                std::memcpy(
+                    target.text.data(),
+                    source.text.data(),
+                    target.size);
+            }
+            if (target.size != source.size) {
+                record.events_truncated = true;
+            }
+        }
+
+        next_run_record =
+            (next_run_record + 1U) % run_records.size();
+        run_record_count = std::min(
+            run_record_count + 1U,
+            run_records.size());
+    }
+
     void clear_events() noexcept {
         event_count = 0U;
         print_size = 0U;
@@ -503,6 +637,42 @@ struct RunEvents {
     }
 };
 
+struct LatestRunRecord {
+    static constexpr std::string_view Mime_Type{};
+    using request_type = std::string_view;
+
+    static std::optional<request_type> parse(std::string_view body) {
+        if (!body.empty()) {
+            return std::nullopt;
+        }
+        return body;
+    }
+
+    static apsl::web::Response handle(
+        apsl::web::Context,
+        request_type) {
+        if (state == nullptr) {
+            return {
+                503,
+                apsl::web::ContentType::TextPlain,
+                "state unavailable\n"};
+        }
+
+        auto const body = state->snapshot_latest_run_record();
+        if (body.empty()) {
+            return {
+                404,
+                apsl::web::ContentType::TextPlain,
+                "no completed run\n"};
+        }
+
+        return {
+            200,
+            apsl::web::ContentType::TextPlain,
+            body};
+    }
+};
+
 struct RunStateSnapshot {
     static constexpr std::string_view Mime_Type{};
     using request_type = std::string_view;
@@ -535,6 +705,7 @@ struct RunStateSnapshot {
 constexpr auto router = apsl::web::routes(
     apsl::web::post<"/api/v1/recipes", UploadRecipe>(),
     apsl::web::post<"/api/v1/runs", StartRun>(),
+    apsl::web::get<"/api/v1/runs/latest", LatestRunRecord>(),
     apsl::web::get<"/api/v1/run/state", RunStateSnapshot>(),
     apsl::web::websocket<"/api/v1/run/events", RunEvents>());
 
