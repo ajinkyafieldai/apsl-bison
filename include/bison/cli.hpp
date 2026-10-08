@@ -47,6 +47,7 @@ enum class RunState : std::uint8_t {
     running,
     passed,
     failed,
+    interrupted,
 };
 
 struct Event final {
@@ -66,6 +67,7 @@ public:
 enum class RunResult : std::uint8_t {
     passed,
     failed,
+    interrupted,
     transport_error,
 };
 
