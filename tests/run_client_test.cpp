@@ -142,6 +142,12 @@ int main() {
             bison::cli::WireEventResult::failed);
         assert(
             bison::cli::decode_run_event(
+                "state\t43\tinterrupted",
+                events,
+                {.value = 43U}) ==
+            bison::cli::WireEventResult::interrupted);
+        assert(
+            bison::cli::decode_run_event(
                 "wat",
                 events,
                 {.value = 41U}) ==
@@ -153,7 +159,7 @@ int main() {
                 {.value = 41U}) ==
             bison::cli::WireEventResult::invalid);
 
-        assert(events.count == 5U);
+        assert(events.count == 6U);
         assert(events.events[0].stream == bison::cli::Stream::out);
         assert(events.events[0].kind == bison::cli::EventKind::log);
         assert(events.events[0].text == "booting");
@@ -170,6 +176,9 @@ int main() {
         assert(events.events[4].kind == bison::cli::EventKind::run_state);
         assert(events.events[4].run == 42U);
         assert(events.events[4].state == bison::cli::RunState::failed);
+        assert(events.events[5].kind == bison::cli::EventKind::run_state);
+        assert(events.events[5].run == 43U);
+        assert(events.events[5].state == bison::cli::RunState::interrupted);
     }
 
     auto const path =
