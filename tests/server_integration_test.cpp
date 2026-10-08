@@ -197,4 +197,20 @@ int main() {
 
     running.store(false);
     server_thread.join();
+
+    bison::server::State history_state{};
+    assert(history_state.upload("print('history')"));
+    for (std::uint64_t run = 1U; run <= 6U; ++run) {
+        history_state.active_run = run;
+        history_state.active = true;
+        history_state.finish((run % 2U) == 0U);
+    }
+
+    assert(
+        history_state.run_record_count ==
+        bison::server::State::run_record_capacity);
+    auto const *latest_history = history_state.latest_run_record();
+    assert(latest_history != nullptr);
+    assert(latest_history->run == 6U);
+    assert(latest_history->phase == bison::server::RunPhase::passed);
 }
