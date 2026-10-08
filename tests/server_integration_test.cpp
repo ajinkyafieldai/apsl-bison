@@ -321,6 +321,35 @@ int main() {
     running.store(false);
     server_thread.join();
 
+    bison::server::State interrupted_state{};
+    assert(interrupted_state.upload("print('interrupted')"));
+    auto const interrupted_digest = bison::cli::hex(interrupted_state.digest);
+    auto const interrupted_digest_text = std::string_view{
+        interrupted_digest.data(),
+        interrupted_digest.size()};
+    std::uint64_t interrupted_run{};
+    assert(interrupted_state.start(
+        interrupted_digest_text,
+        interrupted_run));
+    assert(interrupted_run == 1U);
+    assert(interrupted_state.active);
+    interrupted_state.interrupt();
+    assert(!interrupted_state.active);
+    assert(
+        interrupted_state.snapshot_run_state() ==
+        "state\t1\tinterrupted");
+    auto const *interrupted_record =
+        interrupted_state.latest_run_record();
+    assert(interrupted_record != nullptr);
+    assert(interrupted_record->run == 1U);
+    assert(
+        interrupted_record->phase ==
+        bison::server::RunPhase::interrupted);
+    auto const interrupted_snapshot =
+        interrupted_state.snapshot_latest_run_record();
+    assert(interrupted_snapshot.starts_with(
+        "run\t1\nstate\tinterrupted\nstarted_ms\t"));
+
     bison::server::State history_state{};
     assert(history_state.upload("print('history')"));
     for (std::uint64_t run = 1U; run <= 6U; ++run) {

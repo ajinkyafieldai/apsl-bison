@@ -74,6 +74,7 @@ ExitCode execute(
     case RunResult::passed:
         return ExitCode::success;
     case RunResult::failed:
+    case RunResult::interrupted:
         return ExitCode::run_failed;
     case RunResult::transport_error:
         return ExitCode::transport_error;

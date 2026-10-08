@@ -11,6 +11,7 @@ enum class WireEventResult {
     emitted,
     passed,
     failed,
+    interrupted,
     invalid,
 };
 

@@ -23,6 +23,7 @@ enum class RunPhase : std::uint8_t {
     running,
     passed,
     failed,
+    interrupted,
 };
 
 [[nodiscard]] constexpr std::string_view run_phase_text(
@@ -36,6 +37,8 @@ enum class RunPhase : std::uint8_t {
         return "passed";
     case RunPhase::failed:
         return "failed";
+    case RunPhase::interrupted:
+        return "interrupted";
     }
     return "idle";
 }
@@ -145,17 +148,15 @@ struct State final {
     }
 
     void finish(bool passed) noexcept {
-        auto const finished_ms = monotonic_ms();
-        last_run = active_run;
-        run_phase = passed ? RunPhase::passed : RunPhase::failed;
-        store_run_record(
-            last_run,
-            run_phase,
-            active_started_ms,
-            finished_ms);
-        active = false;
-        active_run = 0U;
-        active_started_ms = 0U;
+        complete(
+            passed ? RunPhase::passed : RunPhase::failed);
+    }
+
+    void interrupt() noexcept {
+        if (!active) {
+            return;
+        }
+        complete(RunPhase::interrupted);
     }
 
     [[nodiscard]] RunRecord const *latest_run_record() const noexcept {
@@ -416,6 +417,20 @@ struct State final {
     }
 
 private:
+    void complete(RunPhase phase) noexcept {
+        auto const finished_ms = monotonic_ms();
+        last_run = active_run;
+        run_phase = phase;
+        store_run_record(
+            last_run,
+            run_phase,
+            active_started_ms,
+            finished_ms);
+        active = false;
+        active_run = 0U;
+        active_started_ms = 0U;
+    }
+
     [[nodiscard]] std::uint64_t monotonic_ms() const noexcept {
         auto const elapsed =
             std::chrono::steady_clock::now() - boot_time;
@@ -730,9 +745,15 @@ struct RunEvents {
         }
 
         auto const run = state->active_run;
-        if (socket.is_open()) {
-            (void)co_await socket.send(
-                state->wire_state(run, "running"));
+        if (!socket.is_open()) {
+            state->interrupt();
+            co_return;
+        }
+
+        if (!co_await socket.send(
+                state->wire_state(run, "running"))) {
+            state->interrupt();
+            co_return;
         }
 
         auto const passed = state->execute();

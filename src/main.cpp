@@ -28,6 +28,9 @@ public:
             case bison::cli::RunState::failed:
                 stream << "failed";
                 break;
+            case bison::cli::RunState::interrupted:
+                stream << "interrupted";
+                break;
             case bison::cli::RunState::none:
                 stream << "unknown";
                 break;
