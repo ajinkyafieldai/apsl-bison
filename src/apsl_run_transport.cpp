@@ -144,6 +144,7 @@ Task start_task(
 Task stream_task(
     WebClient &client,
     std::string_view path,
+    RunHandle expected_run,
     EventSink &sink,
     RunResult &result) {
     auto connection = co_await client.connect_websocket(path);
@@ -159,7 +160,7 @@ Task stream_task(
             co_return;
         }
 
-        switch (decode_run_event(*message, sink)) {
+        switch (decode_run_event(*message, sink, expected_run)) {
         case WireEventResult::emitted:
             break;
 
@@ -197,7 +198,8 @@ Task stream_task(
 
 WireEventResult decode_run_event(
     std::string_view message,
-    EventSink &sink) {
+    EventSink &sink,
+    RunHandle expected_run) {
     auto const separator = message.find('\t');
     auto const kind = message.substr(0U, separator);
     auto const payload =
@@ -221,12 +223,51 @@ WireEventResult decode_run_event(
         return WireEventResult::emitted;
     }
 
-    if (kind == "result" && payload == "passed") {
-        return WireEventResult::passed;
-    }
+    if (kind == "state" && separator != std::string_view::npos) {
+        auto const state_separator = payload.find('\t');
+        if (state_separator == std::string_view::npos) {
+            return WireEventResult::invalid;
+        }
 
-    if (kind == "result" && payload == "failed") {
-        return WireEventResult::failed;
+        std::uint64_t run{};
+        auto const run_text = payload.substr(0U, state_separator);
+        auto const parsed = std::from_chars(
+            run_text.data(),
+            run_text.data() + run_text.size(),
+            run);
+
+        if (parsed.ec != std::errc{} ||
+            parsed.ptr != run_text.data() + run_text.size()) {
+            return WireEventResult::invalid;
+        }
+
+        if (run != expected_run.value) {
+            return WireEventResult::invalid;
+        }
+
+        auto const state_text = payload.substr(state_separator + 1U);
+        RunState state{RunState::none};
+        auto result = WireEventResult::emitted;
+
+        if (state_text == "running") {
+            state = RunState::running;
+        } else if (state_text == "passed") {
+            state = RunState::passed;
+            result = WireEventResult::passed;
+        } else if (state_text == "failed") {
+            state = RunState::failed;
+            result = WireEventResult::failed;
+        } else {
+            return WireEventResult::invalid;
+        }
+
+        sink.emit({
+            .stream = state == RunState::failed ? Stream::err : Stream::out,
+            .kind = EventKind::run_state,
+            .run = run,
+            .state = state,
+        });
+        return result;
     }
 
     return WireEventResult::invalid;
@@ -376,6 +417,7 @@ RunResult ApslRunTransport::stream_run(
     auto task = stream_task(
         client,
         path_text,
+        run,
         sink,
         result);
 

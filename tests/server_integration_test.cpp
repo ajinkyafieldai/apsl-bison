@@ -20,6 +20,9 @@ namespace {
 struct Sink final : bison::cli::EventSink {
     struct StoredEvent {
         bison::cli::Stream stream{bison::cli::Stream::out};
+        bison::cli::EventKind kind{bison::cli::EventKind::log};
+        std::uint64_t run{};
+        bison::cli::RunState state{bison::cli::RunState::none};
         std::array<char, 1024U> text{};
         std::size_t size{};
     };
@@ -33,6 +36,9 @@ struct Sink final : bison::cli::EventSink {
 
         auto &stored = events[count++];
         stored.stream = event.stream;
+        stored.kind = event.kind;
+        stored.run = event.run;
+        stored.state = event.state;
         stored.size = event.text.size();
 
         for (std::size_t i = 0; i < event.text.size(); ++i) {
@@ -101,9 +107,16 @@ int main() {
         sink);
 
     assert(result == bison::cli::RunResult::passed);
-    assert(sink.count == 1U);
-    assert(sink.events[0].stream == bison::cli::Stream::out);
-    assert(sink.text(0U) == "hello world");
+    assert(sink.count == 3U);
+    assert(sink.events[0].kind == bison::cli::EventKind::run_state);
+    assert(sink.events[0].run == 1U);
+    assert(sink.events[0].state == bison::cli::RunState::running);
+    assert(sink.events[1].stream == bison::cli::Stream::out);
+    assert(sink.events[1].kind == bison::cli::EventKind::log);
+    assert(sink.text(1U) == "hello world");
+    assert(sink.events[2].kind == bison::cli::EventKind::run_state);
+    assert(sink.events[2].run == 1U);
+    assert(sink.events[2].state == bison::cli::RunState::passed);
     assert(!state.active);
     assert(state.recipe_size > 0U);
 
@@ -114,11 +127,19 @@ int main() {
         failing_sink);
 
     assert(failing_result == bison::cli::RunResult::failed);
-    assert(failing_sink.count == 2U);
-    assert(failing_sink.events[0].stream == bison::cli::Stream::out);
-    assert(failing_sink.text(0U) == "hello world");
-    assert(failing_sink.events[1].stream == bison::cli::Stream::err);
-    assert(failing_sink.text(1U).starts_with("recipe.lua:2: error: intentional failure"));
+    assert(failing_sink.count == 4U);
+    assert(failing_sink.events[0].kind == bison::cli::EventKind::run_state);
+    assert(failing_sink.events[0].run == 2U);
+    assert(failing_sink.events[0].state == bison::cli::RunState::running);
+    assert(failing_sink.events[1].stream == bison::cli::Stream::out);
+    assert(failing_sink.events[1].kind == bison::cli::EventKind::log);
+    assert(failing_sink.text(1U) == "hello world");
+    assert(failing_sink.events[2].stream == bison::cli::Stream::err);
+    assert(failing_sink.events[2].kind == bison::cli::EventKind::log);
+    assert(failing_sink.text(2U).starts_with("recipe.lua:2: error: intentional failure"));
+    assert(failing_sink.events[3].kind == bison::cli::EventKind::run_state);
+    assert(failing_sink.events[3].run == 2U);
+    assert(failing_sink.events[3].state == bison::cli::RunState::failed);
 
     running.store(false);
     server_thread.join();

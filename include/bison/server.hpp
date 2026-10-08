@@ -157,6 +157,41 @@ struct State final {
         return {wire_buffer.data(), size};
     }
 
+    [[nodiscard]] std::string_view wire_state(
+        std::uint64_t run,
+        std::string_view run_state) {
+        constexpr std::string_view prefix{"state\t"};
+        auto used = std::size_t{};
+
+        auto append = [&](std::string_view part) {
+            auto const remaining = wire_buffer.size() - used;
+            auto const count = std::min(remaining, part.size());
+            if (count > 0U) {
+                std::memcpy(
+                    wire_buffer.data() + used,
+                    part.data(),
+                    count);
+                used += count;
+            }
+        };
+
+        append(prefix);
+
+        auto const encoded = std::to_chars(
+            wire_buffer.data() + used,
+            wire_buffer.data() + wire_buffer.size(),
+            run);
+        if (encoded.ec != std::errc{}) {
+            return {};
+        }
+        used = static_cast<std::size_t>(
+            encoded.ptr - wire_buffer.data());
+
+        append("\t");
+        append(run_state);
+        return {wire_buffer.data(), used};
+    }
+
 private:
     void clear_events() noexcept {
         event_count = 0U;
@@ -402,10 +437,17 @@ struct RunEvents {
             if (socket.is_open()) {
                 (void)co_await socket.send("err\tno active run");
             }
-            if (socket.is_open()) {
-                (void)co_await socket.send("result\tfailed");
+            if (socket.is_open() && state != nullptr) {
+                (void)co_await socket.send(
+                    state->wire_state(0U, "failed"));
             }
             co_return;
+        }
+
+        auto const run = state->active_run;
+        if (socket.is_open()) {
+            (void)co_await socket.send(
+                state->wire_state(run, "running"));
         }
 
         auto const passed = state->execute();
@@ -422,9 +464,9 @@ struct RunEvents {
 
         if (socket.is_open()) {
             (void)co_await socket.send(
-                passed
-                    ? "result\tpassed"
-                    : "result\tfailed");
+                state->wire_state(
+                    run,
+                    passed ? "passed" : "failed"));
         }
 
         state->finish();

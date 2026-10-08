@@ -16,7 +16,8 @@ enum class WireEventResult {
 
 [[nodiscard]] WireEventResult decode_run_event(
     std::string_view message,
-    EventSink &sink);
+    EventSink &sink,
+    RunHandle expected_run);
 
 class ApslRunTransport final : public RunTransport {
 public:

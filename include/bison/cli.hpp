@@ -37,8 +37,23 @@ enum class Stream : std::uint8_t {
     err,
 };
 
+enum class EventKind : std::uint8_t {
+    log,
+    run_state,
+};
+
+enum class RunState : std::uint8_t {
+    none,
+    running,
+    passed,
+    failed,
+};
+
 struct Event final {
     Stream stream{Stream::out};
+    EventKind kind{EventKind::log};
+    std::uint64_t run{};
+    RunState state{RunState::none};
     std::string_view text{};
 };
 
