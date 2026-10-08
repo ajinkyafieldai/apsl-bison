@@ -16,6 +16,26 @@ public:
                 ? std::cerr
                 : std::cout;
 
+        if (event.kind == bison::cli::EventKind::run_state) {
+            stream << "run " << event.run << ": ";
+            switch (event.state) {
+            case bison::cli::RunState::running:
+                stream << "running";
+                break;
+            case bison::cli::RunState::passed:
+                stream << "passed";
+                break;
+            case bison::cli::RunState::failed:
+                stream << "failed";
+                break;
+            case bison::cli::RunState::none:
+                stream << "unknown";
+                break;
+            }
+            stream << '\n';
+            return;
+        }
+
         stream << event.text;
         if (!event.text.ends_with('\n')) {
             stream << '\n';
